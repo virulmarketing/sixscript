@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__claude_ai_Vercel__list_teams",
+      "mcp__claude_ai_Vercel__list_projects",
+      "mcp__claude_ai_Vercel__deploy_to_vercel",
+      "Bash(vercel --version)",
+      "Bash(npm install:*)",
+      "Bash(vercel deploy:*)",
+      "Bash(vercel domains:*)",
+      "Bash(nslookup:*)",
+      "Bash(npm run:*)",
+      "Bash(rm -rf \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\SpikeScript-App\\\\.git\" \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\SpikeScript-App\\\\.vercel\" \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\SpikeScript-App\\\\dist\")",
+      "Read(//c/Users/cjles/OneDrive/Desktop/SpikeScript-App/**)",
+      "Bash(cp -r \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\StrikeScript-App\" \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\SixScript-App\")",
+      "Bash(rm -rf \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\SixScript-App/.git\" \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\SixScript-App/.vercel\" \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\SixScript-App/dist\" \"C:\\\\Users\\\\cjles\\\\OneDrive\\\\Desktop\\\\SixScript-App/node_modules\")"
+    ]
+  }
+}

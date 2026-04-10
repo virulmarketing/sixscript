@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    { "source": "/api/auth/:action", "destination": "/api/auth-handler?action=:action" },
+    { "source": "/api/team/:action", "destination": "/api/team-handler?action=:action" },
+    { "source": "/api/profile/:action", "destination": "/api/profile-handler?action=:action" },
+    { "source": "/api/support", "destination": "/api/support-handler" },
+    { "source": "/api/plans/:action", "destination": "/api/plans-handler?action=:action" }
+  ],
+  "functions": {
+    "api/webhook.js": { "maxDuration": 10 }
+  }
+}
