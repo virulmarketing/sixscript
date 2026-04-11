@@ -16,7 +16,7 @@ Backend API functions require Vercel to run locally — use `vercel dev` if you 
 
 ## Architecture
 
-StrikeScript is a soccer practice planning SaaS. It is a **React 18 SPA** built with Vite, deployed on Vercel with serverless API functions and a Neon PostgreSQL database.
+SixScript is an American football practice planning SaaS. It is a **React 18 SPA** built with Vite, deployed on Vercel with serverless API functions and a Neon PostgreSQL database.
 
 ### Frontend (`/src`)
 
@@ -87,24 +87,25 @@ This repo is a template for sport-specific coaching SaaS products. To spin up a 
 1. Use this repo as a GitHub template → clone it
 2. Edit **`src/config.js`** — the single file that controls everything sport-specific:
    - `appName`, `logoInitials`, `sport`, `primaryColor`, `ytSearchTerm`
+   - Optional: `navColor`, `bgColor`, `accentColor` for a full multi-color palette
    - `categories` and `segmentTemplates` arrays
    - All `copy.*` fields: landing page, onboarding, paywall, auth form, account page
 3. Replace **`src/data/drills.json`** with sport-specific drills (`{ id, cat, name, dur, intensity, desc }`)
-4. Set environment variables in Vercel (new Stripe price ID, new DB, etc.)
-5. Deploy
+4. Update **`index.html`** — title, meta description, OG tags, canonical URL, and favicon color
+5. Set environment variables in Vercel (new Stripe price ID, new DB, etc.)
+6. Deploy
 
-**What Claude should generate per sport when given `src/config.js` to edit:**
+**What Claude should generate per sport:**
 - Sport-appropriate categories and segment templates
 - All `copy.*` prose (hero, problems, how it works, features, testimonials, onboarding sections)
 - 200+ drills in `drills.json` matching the new categories
-- A sport-appropriate `primaryColor`
-
-`App.jsx` requires **no changes** between sports — only `config.js` and `drills.json` change.
+- Sport-appropriate colors in config
 
 ## Key Conventions
 
-- **Adding/editing drills**: The drill database lives in `src/data/drills.json`. Each drill has `{ id, cat, name, dur, intensity, desc }`. Categories are defined in the `CATEGORIES` array in `App.jsx`.
-- **Brand color**: Primary red is `#DC2626`. The brand object `B` in App.jsx holds all design tokens.
+- **Adding/editing drills**: The drill database lives in `src/data/drills.json`. Each drill has `{ id, cat, name, dur, intensity, desc }`.
+- **Multi-color palette**: `config.js` supports `primaryColor` (CTAs/buttons), `navColor` (navbar/dark backgrounds), `bgColor` (content backgrounds), and `accentColor` (secondary buttons). App.jsx reads `navColor` and `bgColor` to override the brand object `B`. If omitted, defaults to dark/off-white.
+- **Brand object**: `B` in App.jsx holds all design tokens. `B.black` and `B.dark` map to `navColor`; `B.offWhite` and `B.surface` map to `bgColor`; `B.red` maps to `primaryColor`.
 - **Auth token key**: `'sk-token'` in localStorage.
 - **localStorage prefix**: `sk-` for app state, `sk_` in the storage polyfill.
 - **API routing**: Vercel rewrites are defined in `vercel.json` — all `/api/*` paths route to the corresponding serverless function.

@@ -64,6 +64,25 @@ const config = {
     { name: "Team Building",         defaultDur:  5, suggestedCats: ["teambuilding"],              color: "#778899" },
     { name: "Water Break",           defaultDur:  5, suggestedCats: ["breaks"],                    color: "#5BB8F5" },
     { name: "Cool Down / Stretch",   defaultDur:  8, suggestedCats: ["teambuilding", "warmup"],    color: "#778899" },
+    { name: "Unit Split",            defaultDur: 20, suggestedCats: [],                            color: "#8B5CF6", splitType: "unit" },
+    { name: "Position Groups",       defaultDur: 30, suggestedCats: [],                            color: "#E8A317", splitType: "position" },
+  ],
+
+  // ── Unit & Position Groups (football-specific) ────────────────────────────
+  unitGroups: [
+    { id: "offense", label: "Offense", color: "#2D7A4F", suggestedCats: ["passing","rushing","receiving","oline","individual"] },
+    { id: "defense", label: "Defense", color: "#457B9D", suggestedCats: ["dline","linebackers","secondary","individual"] },
+  ],
+
+  positionGroups: [
+    { id: "ol",  label: "O-Line",         color: "#6B8E23", suggestedCats: ["oline","individual"] },
+    { id: "dl",  label: "D-Line",         color: "#4ECDC4", suggestedCats: ["dline","individual"] },
+    { id: "lb",  label: "Linebackers",    color: "#E8A317", suggestedCats: ["linebackers","individual"] },
+    { id: "db",  label: "DBs",            color: "#4A90D9", suggestedCats: ["secondary","individual"] },
+    { id: "wr",  label: "Wide Receivers", color: "#7B68EE", suggestedCats: ["receiving","individual"] },
+    { id: "rb",  label: "Running Backs",  color: "#1D3557", suggestedCats: ["rushing","individual"] },
+    { id: "qb",  label: "Quarterbacks",   color: "#E63946", suggestedCats: ["passing","individual"] },
+    { id: "st",  label: "Special Teams",  color: "#DDA0DD", suggestedCats: ["special_teams"] },
   ],
 
   // ── Copy ──────────────────────────────────────────────────────────────────
