@@ -1092,7 +1092,7 @@ export default function StrikeScript() {
             </div>
           </div>
           <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:28,overflowX:"auto",paddingBottom:4}}>
-            {[{ic:"⏱",lb:"Set Time",col:"#FF6B35"},{ic:"📋",lb:"Segments",col:"#E8A317"},{ic:"⚽",lb:"Add Drills",col:"#4ECDC4"},{ic:"⚡",lb:"Generate",col:"#7B68EE"},{ic:"📝",lb:"Notes",col:"#2D7A4F"}].map((s,i)=>(
+            {[{ic:"⏱",lb:"Set Time",col:"#FF6B35"},{ic:"📋",lb:"Segments",col:"#E8A317"},{ic:"🏈",lb:"Add Drills",col:"#4ECDC4"},{ic:"⚡",lb:"Generate",col:"#7B68EE"},{ic:"📝",lb:"Notes",col:"#2D7A4F"}].map((s,i)=>(
               <React.Fragment key={i}>
                 <div style={{display:"flex",flexDirection:"column",alignItems:"center",minWidth:mob?68:84}}>
                   <div style={{width:42,height:42,borderRadius:12,background:s.col+"18",border:`2px solid ${s.col}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,marginBottom:5}}>{s.ic}</div>
