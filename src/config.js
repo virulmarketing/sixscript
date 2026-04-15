@@ -89,7 +89,7 @@ const config = {
   copy: {
 
     authFeatures: [
-      "200+ drills with video links",
+      "1,000+ drills with video links",
       "Unlimited practice plans",
       "Team collaboration & invites",
       "Calendar, PDF export & more",
@@ -97,9 +97,9 @@ const config = {
 
     heroEyebrow:     "Football Practice Planner",
     heroHeadline:    ["Stop Winging It.", "Script the Six."],
-    heroDescription: "SixScript helps football coaches plan every minute of practice with 200+ proven drills, team collaboration, and one-click scheduling. No more scrambling on the sideline.",
+    heroDescription: "SixScript helps football coaches plan every minute of practice with 1,000+ proven drills, team collaboration, and one-click scheduling. No more scrambling on the sideline.",
     heroStats: [
-      ["200+", "Drills"],
+      ["1,000+", "Drills"],
       ["16",   "Categories"],
       ["100%", "Every Rep Planned"],
     ],
@@ -117,14 +117,14 @@ const config = {
     howItWorksSteps: [
       ["01", "Set Your Window",   "Pick your practice start and end time. SixScript tracks every period so no field time goes to waste."],
       ["02", "Build Periods",     "Add warmup, individual, 7-on-7, team periods, conditioning — whatever your team needs today."],
-      ["03", "Select Drills",     "Choose from 200+ football drills with descriptions and video links. Assign each drill to a coordinator."],
+      ["03", "Select Drills",     "Choose from 1,000+ football drills with descriptions and video links. Assign each drill to a coordinator."],
       ["04", "Print & Execute",   "Generate your script with period times and coach assignments. Export to PDF in one click."],
     ],
 
     featuresHeadline: "Built for How\nCoaches Actually Script Practice",
     featuresSubtext:  "Every feature exists because a coach needed it.",
     features: [
-      ["🏈", "rgba(230,57,70,0.1)",   "200+ Football Drill Database",      "Individual skills, passing, rushing, receiving, O-line, D-line, linebackers, secondary, special teams and more. Every drill has a description and video link."],
+      ["🏈", "rgba(230,57,70,0.1)",   "1,000+ Football Drill Database",    "Individual skills, passing, rushing, receiving, O-line, D-line, linebackers, secondary, special teams and more. Every drill has a description and video link."],
       ["⚡", "rgba(45,122,79,0.1)",   "Quick Time Buttons",                 "Don't type drill times — tap. Quick-select buttons set period duration instantly without breaking your planning flow."],
       ["👥", "rgba(69,123,157,0.1)",  "Team Collaboration",                 "Invite your coordinators and position coaches. Assign roles. Everyone sees the practice script before the team hits the field."],
       ["📅", "rgba(29,53,87,0.15)",   "Training Calendar",                  "Schedule sessions weeks ahead. Drag saved templates onto dates. Your entire season at a glance."],
@@ -140,7 +140,7 @@ const config = {
     ],
 
     pricingFeatures: [
-      "200+ football drills with video links",
+      "1,000+ football drills with video links",
       "Unlimited practice plans",
       "Team collaboration & coach assignment",
       "Training calendar & scheduling",
@@ -153,16 +153,16 @@ const config = {
     ctaSubtext:  "5 minutes of scripting transforms 2 hours on the field. Stop winging it. Start scripting it.",
 
     paywallFeatures: [
-      "200+ football drills with video links",
+      "1,000+ football drills with video links",
       "Team collaboration & coach assignment",
       "Training calendar & saved templates",
       "PDF export for print",
       "Unlimited practice plans",
     ],
-    paywallDescription: "Get unlimited access to 200+ drills, team collaboration, calendar planning, and PDF exports.",
+    paywallDescription: "Get unlimited access to 1,000+ drills, team collaboration, calendar planning, and PDF exports.",
 
     planIncludes: [
-      "200+ football drills with video",
+      "1,000+ football drills with video",
       "Team collaboration & roles",
       "Training calendar & scheduling",
       "Save unlimited templates",
@@ -172,7 +172,7 @@ const config = {
 
     cancelFeatures: [
       "Practice plan builder",
-      "200+ drill database",
+      "1,000+ drill database",
       "Team collaboration",
       "Calendar & templates",
       "PDF export",
@@ -203,7 +203,7 @@ const config = {
     onboardingPlanTitle: "Build a Practice Script",
     onboardingPlanPoints: [
       ["📋", "Structure with Periods",  "Choose from 19 period types — Warmup, Individual, 7-on-7, Team, Red Zone, Conditioning and more. Periods define the flow of practice."],
-      ["🏈", "200+ Drills Library",     "Browse by category, search by name, or filter to Favourites. Each drill includes a description and video link."],
+      ["🏈", "1,000+ Drills Library",   "Browse by category, search by name, or filter to Favourites. Each drill includes a description and video link."],
       ["⏱", "Control Every Rep",       "Assign exact time per drill. The script auto-calculates start and end times for every period on the field."],
       ["📝", "Coach Notes",             "Add pre-practice talking points or game-prep reminders. They appear at the top of the printed PDF."],
     ],
