@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Support — SixScript</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --primary:#E63946;
+  --primary-dim:rgba(230,57,70,0.08);
+  --primary-med:rgba(230,57,70,0.25);
+  --navy:#1D3557;
+  --dark:#0A0A0A;
+  --white:#fff;
+  --off-white:#F1FAEE;
+  --text:#1A1A1A;
+  --text-sec:#5A5A5A;
+  --card-border:#DDE8DC;
+  --surface:#EAF0E8;
+}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;color:var(--text);background:var(--off-white);-webkit-font-smoothing:antialiased}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(29,53,87,0.97);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,0.06)}
+.nav-inner{max-width:1100px;margin:0 auto;padding:14px 32px;display:flex;align-items:center;justify-content:space-between}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.nav-logo svg{flex-shrink:0}
+.nav-brand{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--white);letter-spacing:2px}
+.nav-back{color:#bbb;font-size:14px;font-weight:600;text-decoration:none;letter-spacing:.5px;transition:color .2s;display:flex;align-items:center;gap:6px}
+.nav-back:hover{color:var(--primary)}
+
+/* PAGE LAYOUT */
+.page-wrap{max-width:900px;margin:0 auto;padding:120px 32px 80px}
+.page-header{margin-bottom:48px;padding-bottom:32px;border-bottom:1px solid var(--card-border)}
+.page-tag{font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:3px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.page-tag::before{content:'';width:20px;height:2px;background:var(--primary);display:block}
+.page-header h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,6vw,56px);color:var(--text);letter-spacing:1px;line-height:1;margin-bottom:12px}
+.page-header p{font-size:16px;color:var(--text-sec);line-height:1.6}
+
+/* TWO-COL GRID */
+.support-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;align-items:start}
+@media(max-width:720px){.support-grid{grid-template-columns:1fr}}
+
+/* CONTACT FORM */
+.contact-card{background:var(--white);border:1px solid var(--card-border);border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.04)}
+.contact-card h2{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:var(--text);margin-bottom:6px}
+.contact-card .sub{font-size:14px;color:var(--text-sec);margin-bottom:28px}
+.form-group{margin-bottom:18px}
+.form-group label{display:block;font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;letter-spacing:.3px}
+.form-group input,
+.form-group select,
+.form-group textarea{width:100%;padding:12px 14px;border:1.5px solid var(--card-border);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;color:var(--text);background:var(--off-white);transition:border-color .2s,box-shadow .2s;outline:none;resize:none}
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-dim)}
+.form-group textarea{min-height:120px}
+.btn-submit{width:100%;background:var(--primary);color:var(--white);font-family:'DM Sans',sans-serif;font-weight:700;font-size:14px;letter-spacing:.5px;padding:14px 24px;border-radius:10px;border:none;cursor:pointer;transition:all .2s;text-transform:uppercase;margin-top:4px}
+.btn-submit:hover{background:#cf2f3b;transform:translateY(-1px);box-shadow:0 6px 20px rgba(230,57,70,0.35)}
+.btn-submit:disabled{opacity:.6;cursor:not-allowed;transform:none;box-shadow:none}
+
+/* FORM STATES */
+#success-msg{display:none;text-align:center;padding:32px 16px}
+#success-msg .check{width:56px;height:56px;background:var(--primary-dim);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+#success-msg .check svg{width:28px;height:28px}
+#success-msg h3{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;color:var(--text);margin-bottom:8px}
+#success-msg p{font-size:14px;color:var(--text-sec);line-height:1.6}
+#success-msg strong{color:var(--primary)}
+#error-msg{display:none;background:rgba(220,38,38,0.08);border:1px solid rgba(220,38,38,0.2);border-radius:8px;padding:12px 16px;margin-top:12px;font-size:13px;color:#b91c1c;line-height:1.5}
+#error-msg a{color:#b91c1c;font-weight:700}
+
+/* FAQ */
+.faq-card{background:var(--white);border:1px solid var(--card-border);border-radius:16px;padding:32px;box-shadow:0 4px 24px rgba(0,0,0,0.04)}
+.faq-card h2{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:var(--text);margin-bottom:24px}
+.faq-item{border-bottom:1px solid var(--card-border)}
+.faq-item:last-child{border-bottom:none}
+.faq-q{width:100%;background:none;border:none;text-align:left;padding:16px 0;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;color:var(--text);cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:12px;transition:color .2s}
+.faq-q:hover{color:var(--primary)}
+.faq-icon{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:var(--primary-dim);display:flex;align-items:center;justify-content:center;transition:background .2s,transform .2s}
+.faq-q[aria-expanded="true"] .faq-icon{background:var(--primary);transform:rotate(45deg)}
+.faq-icon svg{width:10px;height:10px;fill:var(--primary)}
+.faq-q[aria-expanded="true"] .faq-icon svg{fill:var(--white)}
+.faq-a{display:none;padding:0 0 16px 0;font-size:14px;color:var(--text-sec);line-height:1.7}
+.faq-a.open{display:block}
+.faq-a a{color:var(--primary);font-weight:600;text-decoration:none}
+.faq-a a:hover{text-decoration:underline}
+
+/* FOOTER */
+footer{background:var(--dark);padding:40px 32px;text-align:center}
+.footer-inner{max-width:1100px;margin:0 auto}
+.footer-logo{display:inline-flex;align-items:center;gap:8px;text-decoration:none;margin-bottom:16px}
+.footer-brand{font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--white);letter-spacing:2px}
+.footer-links{display:flex;justify-content:center;gap:24px;margin-bottom:16px;flex-wrap:wrap}
+.footer-links a{color:#888;font-size:13px;text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--primary)}
+.footer-copy{color:#555;font-size:12px}
+
+@media(max-width:600px){
+  .page-wrap{padding:100px 20px 60px}
+  .nav-inner{padding:14px 20px}
+  .contact-card,.faq-card{padding:24px 20px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="nav-logo" href="/">
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="16" fill="#E63946"/>
+        <text x="16" y="21" text-anchor="middle" font-family="'Bebas Neue', sans-serif" font-size="14" fill="#fff" letter-spacing="1">SX</text>
+      </svg>
+      <span class="nav-brand">SixScript</span>
+    </a>
+    <a class="nav-back" href="/">&#8592; Back to Home</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-tag">Help Center</div>
+    <h1>How Can We <span style="color:var(--primary)">Help?</span></h1>
+    <p>Send us a message or browse the FAQ below. We typically respond within one business day.</p>
+  </div>
+
+  <div class="support-grid">
+
+    <!-- CONTACT FORM -->
+    <div class="contact-card">
+      <h2>Contact Support</h2>
+      <p class="sub">Fill out the form and we'll get back to you shortly.</p>
+
+      <div id="form-wrap">
+        <form id="support-form" novalidate>
+          <div class="form-group">
+            <label for="name">Your Name</label>
+            <input type="text" id="name" name="name" placeholder="Coach Johnson" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="topic">Topic</label>
+            <select id="topic" name="topic" required>
+              <option value="" disabled selected>Select a topic…</option>
+              <option value="billing">Billing &amp; Subscription</option>
+              <option value="account">Account &amp; Login</option>
+              <option value="team">Team &amp; Invitations</option>
+              <option value="plans">Practice Plans</option>
+              <option value="drills">Drills &amp; Library</option>
+              <option value="pdf">PDF Export</option>
+              <option value="bug">Bug Report</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="message">Message</label>
+            <textarea id="message" name="message" placeholder="Describe your issue or question…" required></textarea>
+          </div>
+          <button type="submit" class="btn-submit" id="submit-btn">Send Message</button>
+          <div id="error-msg">
+            Something went wrong sending your message. Please try again or email us directly at
+            <a href="mailto:support@sixscript.com">support@sixscript.com</a>.
+          </div>
+        </form>
+      </div>
+
+      <div id="success-msg">
+        <div class="check">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#E63946" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h3>Message Sent!</h3>
+        <p>Thanks for reaching out. We'll reply to <strong id="reply-email"></strong> within one business day.</p>
+      </div>
+    </div>
+
+    <!-- FAQ -->
+    <div class="faq-card">
+      <h2>Frequently Asked Questions</h2>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          How do I cancel my subscription?
+          <span class="faq-icon">
+            <svg viewBox="0 0 10 10"><line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+        </button>
+        <div class="faq-a">
+          Go to <strong>Account &rarr; Subscription</strong> and click <strong>Cancel Plan</strong>. Your access will remain active until the end of your current billing period. You won't be charged again after cancellation. If you have any trouble, contact us at <a href="mailto:support@sixscript.com">support@sixscript.com</a>.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          How do I invite coaches to my team?
+          <span class="faq-icon">
+            <svg viewBox="0 0 10 10"><line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+        </button>
+        <div class="faq-a">
+          Navigate to the <strong>Team</strong> tab in the app. Click <strong>Invite Coach</strong>, enter their email address, and choose their role (Assistant, Coordinator, or Viewer). They'll receive an email invitation with a link to join your team. Invitations expire after 7 days.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Do assistant coaches need their own subscription?
+          <span class="faq-icon">
+            <svg viewBox="0 0 10 10"><line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+        </button>
+        <div class="faq-a">
+          No. Only the Head Coach (team owner) needs an active SixScript subscription. Any coaches you invite as team members can access the team's practice plans using a free account. They simply need to create an account and accept your invitation.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          Can I export my practice plan to PDF?
+          <span class="faq-icon">
+            <svg viewBox="0 0 10 10"><line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+        </button>
+        <div class="faq-a">
+          Yes. After generating your plan in the Practice Planner (Step 3 — the Preview step), click the <strong>Download PDF</strong> button at the top of the plan. This generates a clean, printable PDF of your full football practice schedule, including drill names, durations, segments, and coach assignments — ready to share with your staff or post in the locker room.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          I forgot my password. How do I reset it?
+          <span class="faq-icon">
+            <svg viewBox="0 0 10 10"><line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+        </button>
+        <div class="faq-a">
+          On the login screen, click <strong>Forgot password?</strong> and enter your email address. You'll receive a reset link within a few minutes — be sure to check your spam folder. If you don't receive the email, contact us at <a href="mailto:support@sixscript.com">support@sixscript.com</a> and we'll sort it out.
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" aria-expanded="false">
+          How do I save a practice plan to a specific date on the calendar?
+          <span class="faq-icon">
+            <svg viewBox="0 0 10 10"><line x1="5" y1="1" x2="5" y2="9" stroke="currentColor" stroke-width="1.5"/><line x1="1" y1="5" x2="9" y2="5" stroke="currentColor" stroke-width="1.5"/></svg>
+          </span>
+        </button>
+        <div class="faq-a">
+          When saving a practice plan from the Planner's Preview step, you'll see a <strong>Practice Date</strong> field. Select your date there before saving. The plan will then appear on the corresponding date in your <strong>Calendar</strong> view, giving you a full-season overview of your scheduled practices.
+        </div>
+      </div>
+
+    </div>
+    <!-- /FAQ -->
+
+  </div>
+</div>
+
+<footer>
+  <div class="footer-inner">
+    <a class="footer-logo" href="/">
+      <svg width="28" height="28" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="16" fill="#E63946"/>
+        <text x="16" y="21" text-anchor="middle" font-family="'Bebas Neue', sans-serif" font-size="14" fill="#fff" letter-spacing="1">SX</text>
+      </svg>
+      <span class="footer-brand">SixScript</span>
+    </a>
+    <div class="footer-links">
+      <a href="/privacy.html">Privacy Policy</a>
+      <a href="/terms.html">Terms of Service</a>
+      <a href="/support.html">Support</a>
+    </div>
+    <p class="footer-copy">SixScript &copy; 2026. All rights reserved.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  // FAQ accordion
+  document.querySelectorAll('.faq-q').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var expanded = this.getAttribute('aria-expanded') === 'true';
+      // Close all
+      document.querySelectorAll('.faq-q').forEach(function (b) {
+        b.setAttribute('aria-expanded', 'false');
+        b.nextElementSibling.classList.remove('open');
+      });
+      // Open clicked (if it was closed)
+      if (!expanded) {
+        this.setAttribute('aria-expanded', 'true');
+        this.nextElementSibling.classList.add('open');
+      }
+    });
+  });
+
+  // Contact form
+  var form = document.getElementById('support-form');
+  var submitBtn = document.getElementById('submit-btn');
+  var successMsg = document.getElementById('success-msg');
+  var errorMsg = document.getElementById('error-msg');
+  var formWrap = document.getElementById('form-wrap');
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    var name = document.getElementById('name').value.trim();
+    var email = document.getElementById('email').value.trim();
+    var topic = document.getElementById('topic').value;
+    var message = document.getElementById('message').value.trim();
+
+    if (!name || !email || !topic || !message) {
+      errorMsg.textContent = 'Please fill in all fields before submitting.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    errorMsg.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Sending…';
+
+    fetch('/api/support', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name, email: email, topic: topic, message: message })
+    })
+      .then(function (res) {
+        if (!res.ok) {
+          return res.json().then(function (data) {
+            throw new Error(data.error || 'Server error');
+          });
+        }
+        return res.json();
+      })
+      .then(function () {
+        // Success
+        document.getElementById('reply-email').textContent = email;
+        formWrap.style.display = 'none';
+        successMsg.style.display = 'block';
+      })
+      .catch(function () {
+        errorMsg.innerHTML =
+          'Something went wrong sending your message. Please try again or email us directly at ' +
+          '<a href="mailto:support@sixscript.com">support@sixscript.com</a>.';
+        errorMsg.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message';
+      });
+  });
+})();
+</script>
+
+</body>
+</html>
