@@ -1,6 +1,14 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { sql } = require('./_lib/db');
 
+const getRawBody = (req) =>
+  new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', reject);
+  });
+
 module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).end();
 
@@ -8,7 +16,7 @@ module.exports = async (req, res) => {
   let event;
 
   try {
-    const rawBody = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+    const rawBody = await getRawBody(req);
     event = stripe.webhooks.constructEvent(
       rawBody,
       sig,
