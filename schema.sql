@@ -53,3 +53,9 @@ CREATE TABLE IF NOT EXISTS saved_plans (
   data JSONB NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Migrations (safe to re-run)
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_start TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_cancel_at TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS promo_code_used TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS enterprise_access_expires_at TIMESTAMPTZ;

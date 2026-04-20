@@ -19,8 +19,10 @@ const apiFetch = async (path, body) => {
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
       body: JSON.stringify(body),
     });
-    return res.json();
-  } catch (e) { return { error: e.message }; }
+    const data = await res.json();
+    data.__status = res.status;
+    return data;
+  } catch (e) { return { error: e.message, __status: 0 }; }
 };
 const ytLink = name => `https://www.youtube.com/results?search_query=${encodeURIComponent(config.ytSearchTerm)}+${encodeURIComponent(name)}`;
 const monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
@@ -115,9 +117,8 @@ export default function StrikeScript() {
     if (s.status === "trialing") return true;
     if (s.status === "active") return true;
     if (s.status === "cancelled") {
-      const end = new Date(s.cancelDate);
-      end.setDate(end.getDate() + 30);
-      return new Date() < end;
+      const end = s.cancelAt ? new Date(s.cancelAt) : null;
+      return end ? new Date() < end : false;
     }
     return false;
   };
@@ -164,19 +165,31 @@ export default function StrikeScript() {
     const token = getAuthToken();
     if (!token) { setAuthView(params.get('register') ? "register" : "login"); return; }
 
-    const data = await apiFetch('/api/auth/me', {});
-    if (data.user) {
-      setUser(data.user);
-      const allTeams = data.teams || (data.team ? [data.team] : []);
-      setTeams(allTeams);
-      const activeT = data.team || allTeams[0] || null;
-      setTeam(activeT); setActiveTeamId(activeT?.id || null);
-      const s = data.sub || await ld("sk-sub-"+data.user.id, null); setSub(s);
-      const pm = await ld("sk-pm-"+data.user.id, null); setPaymentMethod(pm);
-      setFavorites(new Set(await ld("sk-fav",[])));setCustomDrills(await ld("sk-cd",[]));setSavedSegments(await ld("sk-ss",[]));setCalendarPlans(await ld("sk-cal",{}));
-      const plansRes=await apiFetch('/api/plans/list',{});setSavedPlans(plansRes?.plans||[]);
-      setAuthView("app");
-    } else { setAuthToken(null); setAuthView("login"); }
+    const tryMe = async () => {
+      const data = await apiFetch('/api/auth/me', {});
+      if (data.user) {
+        setUser(data.user);
+        const allTeams = data.teams || (data.team ? [data.team] : []);
+        setTeams(allTeams);
+        const activeT = data.team || allTeams[0] || null;
+        setTeam(activeT); setActiveTeamId(activeT?.id || null);
+        const s = data.sub || await ld("sk-sub-"+data.user.id, null); setSub(s);
+        const pm = await ld("sk-pm-"+data.user.id, null); setPaymentMethod(pm);
+        setFavorites(new Set(await ld("sk-fav",[])));setCustomDrills(await ld("sk-cd",[]));setSavedSegments(await ld("sk-ss",[]));setCalendarPlans(await ld("sk-cal",{}));
+        const plansRes=await apiFetch('/api/plans/list',{});setSavedPlans(plansRes?.plans||[]);
+        setAuthView("app");
+        return true;
+      } else if (data.__status === 401 || data.__status === 404) {
+        setAuthToken(null); setAuthView("login");
+        return true;
+      }
+      return false;
+    };
+
+    if (!await tryMe()) {
+      await new Promise(r => setTimeout(r, 2000));
+      if (!await tryMe()) { setAuthView("login"); }
+    }
   })(); }, []);
 
   const doRegister = async () => {
@@ -194,7 +207,7 @@ export default function StrikeScript() {
     } else {
       const session = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${data.token}` },
         body: JSON.stringify({ userId: data.user.id, email: data.user.email, successUrl: window.location.origin + '/?stripe=success', cancelUrl: window.location.origin + '/?stripe=cancel' }),
       }).then(r => r.json());
       if (session.url) { window.location.href = session.url; }
@@ -223,7 +236,7 @@ export default function StrikeScript() {
     try {
       const res = await fetch(STRIPE.API_URL + "/create-checkout-session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
         body: JSON.stringify({ priceId: STRIPE.PRICE_ID, userId: user.id, email: user.email, successUrl: STRIPE.SUCCESS_URL, cancelUrl: STRIPE.CANCEL_URL, promoCode: promoCode.trim() || undefined }),
       });
       const data = await res.json();
@@ -259,14 +272,20 @@ export default function StrikeScript() {
   const doCancel = async () => {
     setSubLoading(true);
     try {
-      await fetch(STRIPE.API_URL + "/cancel-subscription", {
+      const res = await fetch(STRIPE.API_URL + "/cancel-subscription", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, stripeSubId: sub?.stripeSubId }),
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ stripeSubId: sub?.stripeSubId }),
       });
-    } catch (e) { console.warn("Stripe API not connected — simulating cancel"); }
-    const newSub = { ...sub, status: "cancelled", cancelDate: new Date().toISOString() };
-    await sv("sk-sub-"+user.id, newSub); setSub(newSub);
+      const data = await res.json();
+      const cancelAt = data.currentPeriodEnd ? new Date(data.currentPeriodEnd * 1000).toISOString() : null;
+      const newSub = { ...sub, status: "cancelled", cancelAt };
+      await sv("sk-sub-"+user.id, newSub); setSub(newSub);
+    } catch (e) {
+      console.warn("Cancel failed:", e);
+      const newSub = { ...sub, status: "cancelled", cancelAt: null };
+      await sv("sk-sub-"+user.id, newSub); setSub(newSub);
+    }
     setShowCancelConfirm(false); setSubLoading(false);
   };
 
@@ -815,9 +834,9 @@ export default function StrikeScript() {
               </div>
               {sub?.status==="trial"&&<div style={{fontSize:13,color:B.textSec,marginBottom:4}}>{trialDaysLeft} day{trialDaysLeft!==1?"s":""} remaining in your free trial</div>}
               {sub?.status==="trial"&&<div style={{fontSize:12,color:B.textDim}}>Trial started {new Date(sub.trialStart).toLocaleDateString()}</div>}
-              {sub?.status==="active"&&<div style={{fontSize:13,color:B.textSec}}>Active since {new Date(sub.subStart).toLocaleDateString()}</div>}
-              {sub?.status==="active"&&<div style={{fontSize:12,color:B.textDim,marginTop:2}}>Next billing: {(() => { const d = new Date(sub.subStart); d.setMonth(d.getMonth()+1); return d.toLocaleDateString(); })()}</div>}
-              {sub?.status==="cancelled"&&<div style={{fontSize:13,color:B.textSec}}>Cancelled — access until {(() => { const d = new Date(sub.cancelDate); d.setDate(d.getDate()+30); return d.toLocaleDateString(); })()}</div>}
+              {sub?.status==="active"&&sub?.subStart&&<div style={{fontSize:13,color:B.textSec}}>Active since {new Date(sub.subStart).toLocaleDateString()}</div>}
+              {sub?.status==="active"&&sub?.subStart&&<div style={{fontSize:12,color:B.textDim,marginTop:2}}>Next billing: {(() => { const d = new Date(sub.subStart); d.setMonth(d.getMonth()+1); return d.toLocaleDateString(); })()}</div>}
+              {sub?.status==="cancelled"&&<div style={{fontSize:13,color:B.textSec}}>Cancelled — access until {sub.cancelAt ? new Date(sub.cancelAt).toLocaleDateString() : '—'}</div>}
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {sub?.status==="trial"&&<button onClick={doSubscribe} style={S.btn(true)}>Upgrade Now</button>}
@@ -880,7 +899,7 @@ export default function StrikeScript() {
           {sub?.status==="active" || sub?.status==="cancelled" ? (
             <div>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${B.cardBorder}`}}>
-                <div><div style={{fontSize:12,fontWeight:700,color:B.black}}>{config.copy.billingProductName}</div><div style={{fontSize:11,color:B.textDim}}>{new Date(sub.subStart).toLocaleDateString()}</div></div>
+                <div><div style={{fontSize:12,fontWeight:700,color:B.black}}>{config.copy.billingProductName}</div><div style={{fontSize:11,color:B.textDim}}>{sub.subStart ? new Date(sub.subStart).toLocaleDateString() : '—'}</div></div>
                 <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontWeight:700,color:B.black}}>$4.99</span><span style={S.badge(B.success)}>Paid</span></div>
               </div>
             </div>

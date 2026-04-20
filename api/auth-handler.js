@@ -79,7 +79,7 @@ module.exports = async (req, res) => {
         user: { id: user.id, name: user.name, email: user.email },
         team: teams[0] || null,
         teams,
-        sub: { status: subStatus, trialStart: user.trial_start },
+        sub: { status: subStatus, trialStart: user.trial_start, subStart: user.sub_start, stripeSubId: user.stripe_sub_id, cancelAt: user.sub_cancel_at },
       });
     } catch (err) {
       console.error('Login error:', err);
@@ -93,7 +93,7 @@ module.exports = async (req, res) => {
     const decoded = verifyToken(token);
     if (!decoded) return res.status(401).json({ error: 'Invalid token' });
     try {
-      const users = await sql`SELECT id, name, email, sub_status, trial_start FROM users WHERE id = ${decoded.userId}`;
+      const users = await sql`SELECT id, name, email, sub_status, trial_start, sub_start, sub_cancel_at, stripe_sub_id FROM users WHERE id = ${decoded.userId}`;
       if (users.length === 0) return res.status(404).json({ error: 'User not found' });
       const user = users[0];
       const teams = await getUserTeams(user.id, sql);
@@ -108,7 +108,7 @@ module.exports = async (req, res) => {
         user: { id: user.id, name: user.name, email: user.email },
         team: teams[0] || null,
         teams,
-        sub: { status: subStatus, trialStart: user.trial_start },
+        sub: { status: subStatus, trialStart: user.trial_start, subStart: user.sub_start, stripeSubId: user.stripe_sub_id, cancelAt: user.sub_cancel_at },
       });
     } catch (err) {
       console.error('Me error:', err);
