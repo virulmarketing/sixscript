@@ -61,6 +61,27 @@ Tables: `users`, `teams`, `team_members`, `invites`, `saved_plans` (plans stored
 
 Stripe handles billing ($4.99/month). Subscription status is stored on `users.sub_status` and synced via the webhook handler. The app enforces a 7-day free trial; users with `sub_status = 'incomplete'` or expired trials hit the paywall view.
 
+**Subscription fields on `users` table:**
+- `sub_status` — `trial`, `trialing`, `active`, `cancelled`, `past_due`, `expired`, `incomplete`
+- `trial_start` — when the trial began
+- `sub_start` — when paid subscription began (set by webhook on `customer.subscription.updated`)
+- `sub_cancel_at` — Stripe's `current_period_end` timestamp when user cancels (access until this date)
+- `stripe_sub_id` — Stripe subscription ID
+- `stripe_customer_id` — Stripe customer ID
+
+**Subscription payload** returned by `auth-handler.js` (login + me):
+```js
+sub: { status, trialStart, subStart, stripeSubId, cancelAt }
+```
+
+**`isSubActive` logic** (App.jsx): for `cancelled` status, uses `s.cancelAt` (the actual period end from Stripe) — NOT a fixed 30-day window.
+
+**Webhook (`api/webhook.js`)**: Uses stream-based raw body reading (not `req.body`) to correctly verify Stripe signatures. The `getRawBody` helper reads from the request stream directly.
+
+**Trial abuse prevention**: `create-checkout-session.js` checks if the user has ever had a trial or active sub before granting `trial_period_days: 7`.
+
+**DB migrations**: Run `node migrate.js` (pulls from `.env.production`) to add new columns safely. Use `vercel env pull --environment=production .env.production` first — do NOT use `vercel env pull` alone (pulls dev DB).
+
 ## Environment Variables
 
 Backend (set in Vercel dashboard):
@@ -112,5 +133,8 @@ This repo is a template for sport-specific coaching SaaS products. To spin up a 
 - **Auth header**: Clients send `Authorization: Bearer <token>`; use `getTokenFromReq(req)` to extract it.
 - **Team permissions**: 4 roles — `head`, `assistant`, `coordinator`, `viewer`. Checked server-side in `team-handler.js`.
 - **Admin test mode**: A "Skip — Admin Test Mode" button on the login/register form sets a mock user and `sub_status: active` to bypass auth and the paywall entirely. This is frontend-only and does not create a DB record.
-- **Subscription gate**: `subActive` (line ~352 in App.jsx) is the single boolean controlling paywall access. It is `true` when sub status is `active`, `trialing`, `cancelled` within 30 days, or trial within 7 days — or when the user is not a `head` role on a team.
+- **Subscription gate**: `subActive` (line ~352 in App.jsx) is the single boolean controlling paywall access. It is `true` when sub status is `active`, `trialing`, `cancelled` (access until `cancelAt`), or trial within 7 days — or when the user is not a `head` role on a team.
 - **Neon DB prefix**: Vercel's Neon integration creates env vars with a `STORAGE_POSTGRES_` prefix. A separate `DATABASE_URL` env var must be manually added pointing to the same pooled connection string.
+- **`apiFetch` tracks HTTP status**: Returns `data.__status = res.status` so the init `me` call can distinguish a real 401 (clear token → login) from a transient 500 (retry after 2s).
+- **Cancel flow**: `doCancel` sends auth token, reads `currentPeriodEnd` from API response, stores as `cancelAt` in localStorage and state. Does not use a fixed 30-day offset.
+- **Auth on checkout**: Both `doSubscribe` and the post-registration checkout fetch send `Authorization: Bearer <token>` so the server can check for prior trials.
