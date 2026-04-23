@@ -493,6 +493,17 @@ export default function StrikeScript() {
     };
     const authFormJSX = (
       <div id="auth-form" style={{width:"100%",maxWidth:400}}>
+        {authMode === "signUp" ? (
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:10,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginBottom:6}}>{config.copy.authEyebrow || "Get Started Free"}</div>
+            <div style={{fontSize:24,fontWeight:800,color:B.white,letterSpacing:"-0.5px",marginBottom:12}}>Create Your Account</div>
+          </div>
+        ) : (
+          <div style={{marginBottom:8}}>
+            <div style={{fontSize:10,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginBottom:6}}>Welcome Back</div>
+            <div style={{fontSize:24,fontWeight:800,color:B.white,letterSpacing:"-0.5px",marginBottom:12}}>Sign In to {config.appName}</div>
+          </div>
+        )}
         {authMode === "signUp" && pendingInviteToken && (
           <div style={{background:"#1a2e1a",border:"1px solid #2D7A4F44",borderRadius:10,padding:"12px 14px",display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
             <span style={{fontSize:18}}>🎉</span>
@@ -514,7 +525,7 @@ export default function StrikeScript() {
             <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${B.cardBorder}`,fontSize:10,color:B.textDim,textAlign:"center"}}>7-day free trial · No charge until trial ends · Cancel anytime</div>
           </div>
         )}
-        <style>{`.cl-socialButtonsBlockButton{border:2px solid #555555!important;}.cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}.cl-dividerText{color:#444444!important;font-weight:600!important;}.cl-formFieldInput{border:2px solid #555555!important;}`}</style>
+        <style>{`.cl-socialButtonsBlockButton{border:2px solid #555555!important;}.cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}.cl-dividerText{color:#444444!important;font-weight:600!important;}.cl-formFieldInput{border:2px solid #555555!important;}.cl-header,.cl-headerTitle,.cl-headerSubtitle,.cl-footer,.cl-footerAction{display:none!important;}`}</style>
         {authMode === "signIn"
           ? <SignIn routing="virtual" afterSignInUrl="/" afterSignUpUrl="/" appearance={clerkAppearance} />
           : <SignUp routing="virtual" afterSignUpUrl="/" afterSignInUrl="/" appearance={clerkAppearance} />
@@ -522,6 +533,10 @@ export default function StrikeScript() {
         <button style={{width:"100%",marginTop:10,padding:"10px",background:"none",border:`1px dashed ${B.darkBorder}`,borderRadius:8,color:B.textDim,fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.5px"}} onClick={()=>{setUser({id:"admin",name:"Admin"});setSub({status:"active"});setAuthView("app");}}>
           Skip — Admin Test Mode
         </button>
+        <div style={{textAlign:"center",fontSize:12,color:B.textSec,marginTop:10}}>
+          {authMode === "signIn" ? "Don't have an account? " : "Already have an account? "}
+          <button onClick={()=>setAuthMode(authMode==="signIn"?"signUp":"signIn")} style={{background:"none",border:"none",color:B.red,fontWeight:700,cursor:"pointer",fontSize:12}}>{authMode==="signIn"?"Sign Up Free":"Sign In"}</button>
+        </div>
       </div>
     );
     return (
