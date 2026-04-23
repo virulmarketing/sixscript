@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useEffect } from "react";
+import React, { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useUser, useAuth, useClerk, SignIn, SignUp } from "@clerk/react";
 import config from "./config.js";
 
 const CATEGORIES = config.categories;
@@ -10,13 +11,14 @@ const addMinutes = (h, m, add) => { const t = h * 60 + m + add; return [Math.flo
 const getTimeOptions = d => { const o = new Set([d]); if (d<=5) [1,2,3,5,8,10].forEach(v=>o.add(v)); else if(d<=10) [Math.max(1,d-5),Math.max(1,d-3),d,d+5,d+10].forEach(v=>o.add(v)); else { const b=Math.floor(d/5)*5; [Math.max(5,b-10),Math.max(5,b-5),d,b+5,b+10].forEach(v=>o.add(v)); } return [...o].filter(v=>v>=1&&v<=60).sort((a,b)=>a-b); };
 const ld = async (k, f) => { try { const r = await window.storage.get(k); return r ? JSON.parse(r.value) : f; } catch { return f; } };
 const sv = async (k, d) => { try { await window.storage.set(k, JSON.stringify(d)); } catch {} };
-const getAuthToken = () => localStorage.getItem('sk-token');
-const setAuthToken = (t) => t ? localStorage.setItem('sk-token', t) : localStorage.removeItem('sk-token');
-const apiFetch = async (path, body) => {
+const apiFetch = async (path, body, token) => {
   try {
     const res = await fetch(path, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify(body),
     });
     const data = await res.json();
@@ -61,14 +63,19 @@ export default function StrikeScript() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => { const h = () => setIsMobile(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
 
+  const { isSignedIn, isLoaded } = useUser();
+  const { getToken } = useAuth();
+  const { signOut } = useClerk();
+
   const [authView, setAuthView] = useState("loading");
+  const [authMode, setAuthMode] = useState("signIn"); // "signIn" | "signUp"
   const [user, setUser] = useState(null);
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPass, setLoginPass] = useState("");
-  const [regName, setRegName] = useState("");
-  const [regEmail, setRegEmail] = useState("");
-  const [regPass, setRegPass] = useState("");
   const [authError, setAuthError] = useState("");
+
+  const authFetch = useCallback(async (path, body = {}) => {
+    const token = await getToken();
+    return apiFetch(path, body, token);
+  }, [getToken]);
 
   const [team, setTeam] = useState(null);
   const [teams, setTeams] = useState([]);
@@ -87,11 +94,6 @@ export default function StrikeScript() {
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [editName, setEditName] = useState("");
-  const [editEmail, setEditEmail] = useState("");
-  const [showChangePass, setShowChangePass] = useState(false);
-  const [oldPass, setOldPass] = useState("");
-  const [newPass, setNewPass] = useState("");
-  const [confirmPass, setConfirmPass] = useState("");
 
   const STRIPE = {
     API_URL: "/api",
@@ -157,87 +159,80 @@ export default function StrikeScript() {
     segBtnRefs.current[activeSegIdx]?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
   }, [activeSegIdx]);
 
-  useEffect(() => { (async () => {
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    // Read invite token from URL on load
     const params = new URLSearchParams(window.location.search);
     const invToken = params.get('accept-invite');
     if (invToken) { setPendingInviteToken(invToken); window.history.replaceState({}, '', window.location.pathname); }
 
-    const token = getAuthToken();
-    if (!token) { setAuthView(params.get('register') ? "register" : "login"); return; }
+    if (!isSignedIn) {
+      setAuthMode(params.get('register') ? "signUp" : "signIn");
+      setAuthView("auth");
+      return;
+    }
 
-    const tryMe = async () => {
-      const data = await apiFetch('/api/auth/me', {});
-      if (data.user) {
-        setUser(data.user);
-        const allTeams = data.teams || (data.team ? [data.team] : []);
-        setTeams(allTeams);
-        const activeT = data.team || allTeams[0] || null;
-        setTeam(activeT); setActiveTeamId(activeT?.id || null);
-        const s = data.sub || await ld("sk-sub-"+data.user.id, null); setSub(s);
-        const pm = await ld("sk-pm-"+data.user.id, null); setPaymentMethod(pm);
-        setFavorites(new Set(await ld("sk-fav",[])));setCustomDrills(await ld("sk-cd",[]));setSavedSegments(await ld("sk-ss",[]));setCalendarPlans(await ld("sk-cal",{}));
-        const plansRes=await apiFetch('/api/plans/list',{});setSavedPlans(plansRes?.plans||[]);
-        setAuthView("app");
-        return true;
-      } else if (data.__status === 401 || data.__status === 404) {
-        setAuthToken(null); setAuthView("login");
-        return true;
+    (async () => {
+      setAuthView("loading");
+      const tryMe = async () => {
+        const data = await authFetch('/api/auth/me', { inviteToken: invToken || undefined });
+        if (data.user) {
+          setUser(data.user);
+          const allTeams = data.teams || (data.team ? [data.team] : []);
+          setTeams(allTeams);
+          const activeT = data.team || allTeams[0] || null;
+          setTeam(activeT); setActiveTeamId(activeT?.id || null);
+
+          // New user with no invite → go straight to checkout
+          if (data.sub?.status === 'incomplete' && !invToken) {
+            const token = await getToken();
+            const session = await fetch('/api/create-checkout-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ successUrl: window.location.origin + '/?stripe=success', cancelUrl: window.location.origin + '/?stripe=cancel' }),
+            }).then(r => r.json());
+            if (session.url) { window.location.href = session.url; return true; }
+          }
+
+          const s = data.sub || await ld("sk-sub-"+data.user.id, null); setSub(s);
+          const pm = await ld("sk-pm-"+data.user.id, null); setPaymentMethod(pm);
+          setFavorites(new Set(await ld("sk-fav",[])));setCustomDrills(await ld("sk-cd",[]));setSavedSegments(await ld("sk-ss",[]));setCalendarPlans(await ld("sk-cal",{}));
+          const plansRes = await authFetch('/api/plans/list', {});setSavedPlans(plansRes?.plans||[]);
+          setAuthView("app");
+          return true;
+        } else if (data.__status === 401 || data.__status === 404) {
+          // Only show auth if Clerk also says not signed in; otherwise keep loading to avoid loop
+          if (!isSignedIn) setAuthView("auth");
+          return true;
+        }
+        return false;
+      };
+
+      if (!await tryMe()) {
+        await new Promise(r => setTimeout(r, 2000));
+        if (!await tryMe()) {
+          if (!isSignedIn) setAuthView("auth");
+          // If still signed in but me keeps failing, stay on loading — avoids refresh loop
+        }
       }
-      return false;
-    };
+    })();
+  }, [isSignedIn, isLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    if (!await tryMe()) {
-      await new Promise(r => setTimeout(r, 2000));
-      if (!await tryMe()) { setAuthView("login"); }
-    }
-  })(); }, []);
-
-  const doRegister = async () => {
-    if (!regName.trim()||!regEmail.trim()||!regPass.trim()) { setAuthError("All fields required"); return; }
-    setSubLoading(true);
-    const data = await apiFetch('/api/auth/register', { name: regName.trim(), email: regEmail.trim(), password: regPass, inviteToken: pendingInviteToken });
-    if (data.error) { setAuthError(data.error); setSubLoading(false); return; }
-    setAuthToken(data.token); setUser(data.user);
-    const regTeams = data.teams || (data.team ? [data.team] : []);
-    setTeams(regTeams);
-    const regActiveT = data.team || regTeams[0] || null;
-    setTeam(regActiveT); setActiveTeamId(regActiveT?.id || null);
-    if (pendingInviteToken) {
-      setPendingInviteToken(null); setSub(data.sub || null); setAuthView("app"); setAuthError(""); setSubLoading(false);
-    } else {
-      const session = await fetch('/api/create-checkout-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${data.token}` },
-        body: JSON.stringify({ userId: data.user.id, email: data.user.email, successUrl: window.location.origin + '/?stripe=success', cancelUrl: window.location.origin + '/?stripe=cancel' }),
-      }).then(r => r.json());
-      if (session.url) { window.location.href = session.url; }
-      else { setAuthError(session.error || "Failed to start checkout"); setSubLoading(false); }
-    }
+  const doLogout = async () => {
+    setUser(null); setTeam(null); setTeams([]); setActiveTeamId(null); setSub(null); setPaymentMethod(null);
+    setStep(0); setSegments([]);
+    await signOut();
   };
-  const doLogin = async () => {
-    const data = await apiFetch('/api/auth/login', { email: loginEmail.trim(), password: loginPass, inviteToken: pendingInviteToken });
-    if (data.error) { setAuthError(data.error); return; }
-    setAuthToken(data.token); setUser(data.user);
-    const loginTeams = data.teams || (data.team ? [data.team] : []);
-    setTeams(loginTeams);
-    const loginActiveT = data.team || loginTeams[0] || null;
-    setTeam(loginActiveT); setActiveTeamId(loginActiveT?.id || null);
-    if (data.sub) { await sv("sk-sub-"+data.user.id, data.sub); setSub(data.sub); }
-    else { const s = await ld("sk-sub-"+data.user.id, null); setSub(s); }
-    const pm = await ld("sk-pm-"+data.user.id, null); setPaymentMethod(pm);
-    setFavorites(new Set(await ld("sk-fav",[])));setCustomDrills(await ld("sk-cd",[]));setSavedSegments(await ld("sk-ss",[]));setCalendarPlans(await ld("sk-cal",{}));
-    const plansRes=await apiFetch('/api/plans/list',{});setSavedPlans(plansRes?.plans||[]);
-    setPendingInviteToken(null); setAuthView("app"); setAuthError("");
-  };
-  const doLogout = async () => { setAuthToken(null); setUser(null); setTeam(null); setTeams([]); setActiveTeamId(null); setSub(null); setPaymentMethod(null); setAuthView("login"); setStep(0); setSegments([]); };
 
   const doSubscribe = async () => {
     setSubLoading(true);
     try {
+      const token = await getToken();
       const res = await fetch(STRIPE.API_URL + "/create-checkout-session", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
-        body: JSON.stringify({ priceId: STRIPE.PRICE_ID, userId: user.id, email: user.email, successUrl: STRIPE.SUCCESS_URL, cancelUrl: STRIPE.CANCEL_URL, promoCode: promoCode.trim() || undefined }),
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ successUrl: STRIPE.SUCCESS_URL, cancelUrl: STRIPE.CANCEL_URL, promoCode: promoCode.trim() || undefined }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
@@ -272,9 +267,10 @@ export default function StrikeScript() {
   const doCancel = async () => {
     setSubLoading(true);
     try {
+      const token = await getToken();
       const res = await fetch(STRIPE.API_URL + "/cancel-subscription", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${getAuthToken()}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ stripeSubId: sub?.stripeSubId }),
       });
       const data = await res.json();
@@ -297,7 +293,7 @@ export default function StrikeScript() {
       (async () => {
         const sessionId = params.get("session_id");
         if (sessionId) {
-          const result = await apiFetch('/api/confirm-payment', { sessionId });
+          const result = await authFetch('/api/confirm-payment', { sessionId });
           if (result.sub) { setSub(result.sub); if (!localStorage.getItem('sk-onboarded-'+(user?.id||''))) setShowOnboarding(true); }
         } else {
           setSub({ status: 'trialing', trialStart: new Date().toISOString() });
@@ -312,17 +308,10 @@ export default function StrikeScript() {
   }, [user]);
 
   const doUpdateProfile = async () => {
-    if (!editName.trim() || !editEmail.trim()) { setAuthError("Name and email required"); return; }
-    const data = await apiFetch('/api/profile/update', { name: editName.trim(), email: editEmail.trim() });
+    if (!editName.trim()) { setAuthError("Name required"); return; }
+    const data = await authFetch('/api/profile/update', { name: editName.trim() });
     if (data.error) { setAuthError(data.error); return; }
     setUser(data.user); setShowEditProfile(false); setAuthError("");
-  };
-  const doChangePassword = async () => {
-    if (!newPass.trim() || newPass.length < 4) { setAuthError("New password must be at least 4 characters"); return; }
-    if (newPass !== confirmPass) { setAuthError("Passwords don't match"); return; }
-    const data = await apiFetch('/api/profile/password', { oldPassword: oldPass, newPassword: newPass });
-    if (data.error) { setAuthError(data.error); return; }
-    setShowChangePass(false); setOldPass(""); setNewPass(""); setConfirmPass(""); setAuthError("");
   };
 
   const switchTeam = (teamId) => {
@@ -336,7 +325,7 @@ export default function StrikeScript() {
 
   const createTeam = async () => {
     if (!newTeamName.trim()) return;
-    const data = await apiFetch('/api/team/create', { name: newTeamName.trim() });
+    const data = await authFetch('/api/team/create', { name: newTeamName.trim() });
     if (data.error) { setAuthError(data.error); return; }
     const newTeams = data.teams || (data.team ? [...teams.filter(t => t.id !== data.team?.id), data.team] : teams);
     setTeams(newTeams);
@@ -348,7 +337,7 @@ export default function StrikeScript() {
     if (!inviteEmail.trim()) { setAuthError("Please enter an email"); return; }
     if (!team) { setAuthError("No team found — please create a team first"); return; }
     setAuthError("");
-    const data = await apiFetch('/api/team/invite', { email: inviteEmail.trim(), role: inviteRole, teamId: team.id });
+    const data = await authFetch('/api/team/invite', { email: inviteEmail.trim(), role: inviteRole, teamId: team.id });
     if (data.error) { setAuthError(data.error); return; }
     if (!data.team) { setAuthError("Unexpected error — please try again"); return; }
     setTeam(data.team);
@@ -357,17 +346,17 @@ export default function StrikeScript() {
   };
   const updateMemberRole = async (email, role) => {
     if (!team) return;
-    const data = await apiFetch('/api/team/update-member', { email, role, teamId: team.id });
+    const data = await authFetch('/api/team/update-member', { email, role, teamId: team.id });
     if (data.team) { setTeam(data.team); setTeams(prev => prev.map(t => t.id === data.team.id ? data.team : t)); }
   };
   const removeMember = async email => {
     if (!team) return;
-    const data = await apiFetch('/api/team/remove-member', { email, teamId: team.id });
+    const data = await authFetch('/api/team/remove-member', { email, teamId: team.id });
     if (data.team) { setTeam(data.team); setTeams(prev => prev.map(t => t.id === data.team.id ? data.team : t)); }
   };
   const updateTeamColors = async (primary, secondary) => {
     if (!team) return;
-    const data = await apiFetch('/api/team/update', { primaryColor: primary, secondaryColor: secondary, teamId: team.id });
+    const data = await authFetch('/api/team/update', { primaryColor: primary, secondaryColor: secondary, teamId: team.id });
     if (data.team) { setTeam(data.team); setTeams(prev => prev.map(t => t.id === data.team.id ? data.team : t)); }
   };
   const teamCoaches = team?.members || (user ? [{ userId: user.id, name: user.name, email: user.email, role: "head" }] : []);
@@ -397,11 +386,11 @@ export default function StrikeScript() {
   const loadSavedSegment = saved => { const drills=saved.drills.map(sd=>{const f=allDrills.find(d=>d.id===sd.id);return f?{...f,allocatedMin:sd.allocatedMin,coach:sd.coach||user?.name}:null;}).filter(Boolean); setSegments([...segments,{name:saved.name,color:saved.color,defaultDur:saved.defaultDur,suggestedCats:saved.suggestedCats,duration:0,drills}]); };
   const deleteSavedSegment = async id => { const n=savedSegments.filter(s=>s.id!==id); setSavedSegments(n); await sv("sk-ss",n); };
   const serializeSegments = segs => segs.map(s=>({name:s.name,color:s.color,duration:s.duration,suggestedCats:s.suggestedCats||[],splitType:s.splitType||"full",drills:s.drills.map(d=>({id:d.id,allocatedMin:d.allocatedMin,coach:d.coach})),tracks:s.tracks?s.tracks.map(t=>({id:t.id,label:t.label,color:t.color,suggestedCats:t.suggestedCats||[],drills:t.drills.map(d=>({id:d.id,allocatedMin:d.allocatedMin,coach:d.coach}))})):undefined}));
-  const savePracticePlan = async () => { if(!savePlanName.trim()) return; const p={id:"pl_"+Date.now(),label:savePlanName.trim(),createdBy:user?.name,startH,startM,startAP,endH,endM,endAP,notes:planNotes,segments:serializeSegments(segments)}; const n=[...savedPlans,p]; setSavedPlans(n); if(getAuthToken()){await apiFetch('/api/plans/save',{plan:p});}else{await sv("sk-sp",n);} setSavePlanName(""); setShowSavePlan(false); };
+  const savePracticePlan = async () => { if(!savePlanName.trim()) return; const p={id:"pl_"+Date.now(),label:savePlanName.trim(),createdBy:user?.name,startH,startM,startAP,endH,endM,endAP,notes:planNotes,segments:serializeSegments(segments)}; const n=[...savedPlans,p]; setSavedPlans(n); if(user){await authFetch('/api/plans/save',{plan:p});}else{await sv("sk-sp",n);} setSavePlanName(""); setShowSavePlan(false); };
   const savePlanToDate = async () => { if(!practiceDate) return; const inlinePlan={inline:true,label:practiceDate,startH,startM,startAP,endH,endM,endAP,notes:planNotes,segments:serializeSegments(segments)}; const cal={...calendarPlans,[practiceDate]:inlinePlan}; setCalendarPlans(cal); await sv("sk-cal",cal); setPracticeDate(null); setView("calendar"); };
   const hydrateDrills = drillRefs => drillRefs.map(sd=>{const f=allDrills.find(d=>d.id===sd.id);return f?{...f,allocatedMin:sd.allocatedMin,coach:sd.coach||user?.name}:null;}).filter(Boolean);
   const loadPracticePlan = (p, date=undefined) => { setStartH(p.startH);setStartM(p.startM);setStartAP(p.startAP);setEndH(p.endH);setEndM(p.endM);setEndAP(p.endAP);setStartHStr(String(p.startH));setStartMStr(String(p.startM).padStart(2,"0"));setEndHStr(String(p.endH));setEndMStr(String(p.endM).padStart(2,"0")); setSegments(p.segments.map(s=>({...s,splitType:s.splitType||"full",drills:hydrateDrills(s.drills),tracks:s.tracks?s.tracks.map(t=>({...t,drills:hydrateDrills(t.drills)})):undefined}))); setPlanNotes(p.notes||""); if(date!==undefined) setPracticeDate(date); setStep(3); setView("planner"); };
-  const deleteSavedPlan = async id => { const n=savedPlans.filter(p=>p.id!==id); setSavedPlans(n); if(getAuthToken()){await apiFetch('/api/plans/delete',{id});}else{await sv("sk-sp",n);} };
+  const deleteSavedPlan = async id => { const n=savedPlans.filter(p=>p.id!==id); setSavedPlans(n); if(user){await authFetch('/api/plans/delete',{id});}else{await sv("sk-sp",n);} };
   const assignPlanToDate = async (dk, pid) => { const n={...calendarPlans,[dk]:pid}; setCalendarPlans(n); await sv("sk-cal",n); setShowAssignPlan(null); };
   const removePlanFromDate = async dk => { const n={...calendarPlans}; delete n[dk]; setCalendarPlans(n); await sv("sk-cal",n); };
   const addSegment = t => { const uid="_"+Date.now(); if(t.splitType==="unit"){const groups=config.unitGroups||[];setSegments([...segments,{...t,_uid:uid,duration:t.defaultDur||20,drills:[],tracks:groups.map(g=>({...g,drills:[]}))}]);} else if(t.splitType==="position"){const groups=config.positionGroups||[];setSegments([...segments,{...t,_uid:uid,duration:t.defaultDur||30,drills:[],tracks:groups.map(g=>({...g,drills:[]}))}]);} else {setSegments([...segments,{...t,_uid:uid,duration:0,drills:[]}]);} };
@@ -472,57 +461,67 @@ export default function StrikeScript() {
   // ═══════════ LOADING ═══════════
   if (authView === "loading") return <div style={{...S.app,display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh"}}><LogoMark size={64} /></div>;
 
-  // ═══════════ AUTH: LOGIN / REGISTER ═══════════
-  if (authView === "login" || authView === "register") {
-    const scrollToForm = (view) => {
-      if (view) { setAuthView(view); setAuthError(""); }
+  // ═══════════ AUTH ═══════════
+  if (authView === "auth") {
+    const scrollToForm = (mode) => {
+      if (mode) setAuthMode(mode === "register" ? "signUp" : "signIn");
       setTimeout(() => document.getElementById("auth-form")?.scrollIntoView({behavior:"smooth",block:"center"}), 50);
     };
+    const clerkAppearance = {
+      variables: {
+        colorPrimary: primary,
+        colorBackground: '#FFFFFF',
+        colorText: '#1A1A1A',
+        colorTextSecondary: '#333333',
+        colorInputBackground: '#F8F7F5',
+        colorNeutral: '#999999',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        borderRadius: '8px',
+      },
+      elements: {
+        rootBox: { width: '100%', minWidth: 'unset', display: 'flex', flexDirection: 'column' },
+        card: { boxShadow: '0 8px 40px rgba(0,0,0,0.4)', background: '#FFFFFF', borderRadius: '16px', width: '100%', minWidth: 'unset', margin: '0' },
+        headerTitle: { display: 'none' },
+        headerSubtitle: { display: 'none' },
+        footer: { display: 'none' },
+        dividerRow: { marginTop: '4px', marginBottom: '4px' },
+        dividerText: { color: '#444444', fontWeight: '600' },
+        socialButtonsBlockButton: { border: '1.5px solid #AAAAAA' },
+        socialButtonsBlockButtonText: { color: '#1A1A1A', fontWeight: '600' },
+        formFieldInput: { color: '#1A1A1A' },
+      },
+    };
     const authFormJSX = (
-      <div id="auth-form" style={{background:B.white,borderRadius:16,border:`1px solid ${B.cardBorder}`,padding:mob?"24px 20px":"32px 28px",boxShadow:"0 24px 64px rgba(0,0,0,0.12)",width:"100%",maxWidth:400}}>
-        <div style={{fontSize:9,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"2px",marginBottom:4}}>{authView==="login"?"Welcome Back":"Get Started Free"}</div>
-        <div style={{fontSize:mob?18:22,fontWeight:800,color:B.black,marginBottom:20}}>{authView==="login"?"Sign In to Your Account":"Create Your Account"}</div>
-        {authError && <div style={{...S.badge(B.danger),marginBottom:14,padding:"7px 12px",fontSize:11}}>{authError}</div>}
-        <div style={{display:"flex",flexDirection:"column",gap:13}}>
-          {authView==="register" && <div><span style={S.label}>Full Name</span><input style={S.input} placeholder="Coach Smith" value={regName} onChange={e=>setRegName(e.target.value)} /></div>}
-          <div><span style={S.label}>Email</span><input style={S.input} type="email" placeholder="coach@club.com" value={authView==="login"?loginEmail:regEmail} onChange={e=>authView==="login"?setLoginEmail(e.target.value):setRegEmail(e.target.value)} /></div>
-          <div><span style={S.label}>Password</span><input style={S.input} type="password" placeholder="••••••••" value={authView==="login"?loginPass:regPass} onChange={e=>authView==="login"?setLoginPass(e.target.value):setRegPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(authView==="login"?doLogin():doRegister())} /></div>
-          {authView==="register" && pendingInviteToken && (
-            <div style={{background:"#1a2e1a",border:"1px solid #2D7A4F44",borderRadius:10,padding:"12px 14px",display:"flex",gap:10,alignItems:"center"}}>
-              <span style={{fontSize:18}}>🎉</span>
-              <div><div style={{fontSize:12,fontWeight:700,color:"#2D7A4F"}}>You were invited to join a team</div><div style={{fontSize:11,color:B.textDim,marginTop:2}}>No payment required — your head coach covers the subscription.</div></div>
-            </div>
-          )}
-          {authView==="register" && !pendingInviteToken && (
-            <div style={{background:B.surface,border:`1px solid ${B.cardBorder}`,borderRadius:10,padding:"12px 14px"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-                <div style={{fontSize:12,fontWeight:800,color:B.black}}>{config.appName}</div>
-                <div><span style={{fontSize:18,fontWeight:800,color:B.black}}>{config.price}</span><span style={{fontSize:11,color:B.textSec}}>/mo after trial</span></div>
-              </div>
-              {config.copy.authFeatures.map(f=>(
-                <div key={f} style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
-                  <span style={{color:B.red,fontWeight:700,fontSize:11}}>✓</span>
-                  <span style={{fontSize:11,color:B.textSec}}>{f}</span>
-                </div>
-              ))}
-              <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${B.cardBorder}`,fontSize:10,color:B.textDim,textAlign:"center"}}>7-day free trial · No charge until trial ends · Cancel anytime</div>
-              <div style={{marginTop:10}}>
-                <div style={{fontSize:10,fontWeight:700,color:B.textDim,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:5}}>Promo Code (Optional)</div>
-                <input style={{...S.input,letterSpacing:"1px",fontSize:13}} placeholder="Enter promo code" value={promoCode} onChange={e=>setPromoCode(e.target.value.toUpperCase())} />
-              </div>
-            </div>
-          )}
-          <button style={{...S.btn(true),width:"100%",padding:"13px",marginTop:4,opacity:subLoading?0.6:1}} onClick={authView==="login"?doLogin:doRegister} disabled={subLoading}>
-            {authView==="login" ? "Sign In →" : subLoading ? "Please wait..." : pendingInviteToken ? "Join Team →" : "Start Free Trial →"}
-          </button>
-          <button style={{width:"100%",padding:"10px",background:"none",border:`1px dashed ${B.darkBorder}`,borderRadius:8,color:B.textDim,fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.5px"}} onClick={()=>{setUser({id:"admin",name:"Admin"});setSub({status:"active"});setAuthView("app");}}>
-            Skip — Admin Test Mode
-          </button>
-          <div style={{textAlign:"center",fontSize:12,color:B.textSec}}>
-            {authView==="login"?"Don't have an account? ":"Already have an account? "}
-            <button onClick={()=>{setAuthView(authView==="login"?"register":"login");setAuthError("");}} style={{background:"none",border:"none",color:B.red,fontWeight:700,cursor:"pointer",fontSize:12}}>{authView==="login"?"Sign Up Free":"Sign In"}</button>
+      <div id="auth-form" style={{width:"100%",maxWidth:400}}>
+        {authMode === "signUp" && pendingInviteToken && (
+          <div style={{background:"#1a2e1a",border:"1px solid #2D7A4F44",borderRadius:10,padding:"12px 14px",display:"flex",gap:10,alignItems:"center",marginBottom:12}}>
+            <span style={{fontSize:18}}>🎉</span>
+            <div><div style={{fontSize:12,fontWeight:700,color:"#2D7A4F"}}>You were invited to join a team</div><div style={{fontSize:11,color:B.textDim,marginTop:2}}>No payment required — your head coach covers the subscription.</div></div>
           </div>
-        </div>
+        )}
+        {authMode === "signUp" && !pendingInviteToken && (
+          <div style={{background:B.surface,border:`1px solid ${B.cardBorder}`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
+              <div style={{fontSize:12,fontWeight:800,color:B.black}}>{config.appName}</div>
+              <div><span style={{fontSize:18,fontWeight:800,color:B.black}}>{config.price}</span><span style={{fontSize:11,color:B.textSec}}>/mo after trial</span></div>
+            </div>
+            {config.copy.authFeatures.map(f=>(
+              <div key={f} style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
+                <span style={{color:B.red,fontWeight:700,fontSize:11}}>✓</span>
+                <span style={{fontSize:11,color:B.textSec}}>{f}</span>
+              </div>
+            ))}
+            <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${B.cardBorder}`,fontSize:10,color:B.textDim,textAlign:"center"}}>7-day free trial · No charge until trial ends · Cancel anytime</div>
+          </div>
+        )}
+        <style>{`.cl-socialButtonsBlockButton{border:2px solid #555555!important;}.cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}.cl-dividerText{color:#444444!important;font-weight:600!important;}.cl-formFieldInput{border:2px solid #555555!important;}`}</style>
+        {authMode === "signIn"
+          ? <SignIn routing="virtual" afterSignInUrl="/" afterSignUpUrl="/" appearance={clerkAppearance} />
+          : <SignUp routing="virtual" afterSignUpUrl="/" afterSignInUrl="/" appearance={clerkAppearance} />
+        }
+        <button style={{width:"100%",marginTop:10,padding:"10px",background:"none",border:`1px dashed ${B.darkBorder}`,borderRadius:8,color:B.textDim,fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.5px"}} onClick={()=>{setUser({id:"admin",name:"Admin"});setSub({status:"active"});setAuthView("app");}}>
+          Skip — Admin Test Mode
+        </button>
       </div>
     );
     return (
@@ -804,8 +803,7 @@ export default function StrikeScript() {
               {team&&<div style={{marginTop:4}}><span style={S.badge(B.red)}>{team.name}</span></div>}
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-              <button onClick={()=>{setEditName(user?.name||"");setEditEmail(user?.email||"");setShowEditProfile(true);setAuthError("");}} style={S.btn(false)}>Edit Profile</button>
-              <button onClick={()=>{setShowChangePass(true);setOldPass("");setNewPass("");setConfirmPass("");setAuthError("");}} style={S.btn(false)}>Change Password</button>
+              <button onClick={()=>{setEditName(user?.name||"");setShowEditProfile(true);setAuthError("");}} style={S.btn(false)}>Edit Name</button>
             </div>
           </div>
         </div>
@@ -827,20 +825,23 @@ export default function StrikeScript() {
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",flexWrap:"wrap",gap:16}}>
             <div>
               <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                <span style={{...S.badge(sub?.status==="active"?B.success:sub?.status==="trial"?B.red:sub?.status==="cancelled"?"#E67E22":B.danger),padding:"4px 12px",fontSize:11}}>
-                  {sub?.status==="active"?"Active":sub?.status==="trial"?"Free Trial":sub?.status==="cancelled"?"Cancelled":"Expired"}
+                <span style={{...S.badge(sub?.status==="active"?B.success:sub?.status==="trialing"?B.success:sub?.status==="trial"?B.red:sub?.status==="cancelled"?"#E67E22":B.danger),padding:"4px 12px",fontSize:11}}>
+                  {sub?.status==="active"?"Active":sub?.status==="trialing"?"Free Trial":sub?.status==="trial"?"Free Trial":sub?.status==="cancelled"?"Cancelled":"Expired"}
                 </span>
                 <span style={{fontSize:20,fontWeight:800,color:B.black}}>{config.price}<span style={{fontSize:12,fontWeight:600,color:B.textDim}}>/month</span></span>
               </div>
               {sub?.status==="trial"&&<div style={{fontSize:13,color:B.textSec,marginBottom:4}}>{trialDaysLeft} day{trialDaysLeft!==1?"s":""} remaining in your free trial</div>}
               {sub?.status==="trial"&&<div style={{fontSize:12,color:B.textDim}}>Trial started {new Date(sub.trialStart).toLocaleDateString()}</div>}
+              {sub?.status==="trialing"&&sub?.trialStart&&<div style={{fontSize:13,color:B.textSec,marginBottom:4}}>{(() => { const end = new Date(sub.trialStart); end.setDate(end.getDate()+7); const left = Math.max(0, Math.ceil((end-new Date())/(1000*60*60*24))); return `${left} day${left!==1?"s":""} remaining in your free trial`; })()}</div>}
+              {sub?.status==="trialing"&&sub?.trialStart&&<div style={{fontSize:12,color:B.textDim}}>Trial started {new Date(sub.trialStart).toLocaleDateString()}</div>}
+              {sub?.status==="trialing"&&sub?.trialStart&&<div style={{fontSize:12,color:B.textDim,marginTop:2}}>First charge: {(() => { const d = new Date(sub.trialStart); d.setDate(d.getDate()+7); return d.toLocaleDateString(); })()}</div>}
               {sub?.status==="active"&&sub?.subStart&&<div style={{fontSize:13,color:B.textSec}}>Active since {new Date(sub.subStart).toLocaleDateString()}</div>}
               {sub?.status==="active"&&sub?.subStart&&<div style={{fontSize:12,color:B.textDim,marginTop:2}}>Next billing: {(() => { const d = new Date(sub.subStart); d.setMonth(d.getMonth()+1); return d.toLocaleDateString(); })()}</div>}
               {sub?.status==="cancelled"&&<div style={{fontSize:13,color:B.textSec}}>Cancelled — access until {sub.cancelAt ? new Date(sub.cancelAt).toLocaleDateString() : '—'}</div>}
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {sub?.status==="trial"&&<button onClick={doSubscribe} style={S.btn(true)}>Upgrade Now</button>}
-              {myRole==="head"&&sub?.status==="active"&&<button onClick={()=>setShowCancelConfirm(true)} style={{...S.btn(false),color:B.danger,borderColor:B.danger+"44"}}>Cancel Subscription</button>}
+              {myRole==="head"&&(sub?.status==="active"||sub?.status==="trialing")&&<button onClick={()=>setShowCancelConfirm(true)} style={{...S.btn(false),color:B.danger,borderColor:B.danger+"44"}}>Cancel Subscription</button>}
               {sub?.status==="cancelled"&&<button onClick={doResubscribe} style={S.btn(true)}>Resubscribe</button>}
             </div>
           </div>
@@ -861,7 +862,7 @@ export default function StrikeScript() {
             <span style={S.label}>Team Membership</span>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:12,marginTop:8}}>
               <div style={{fontSize:13,color:B.textSec}}>You are a member of <strong>{team.name}</strong>. Leaving will remove your access to the team.</div>
-              <button onClick={async()=>{if(!window.confirm("Leave "+team.name+"? You will lose access to this team."))return; await apiFetch('/api/team/leave',{}); setTeam(null); setSub({status:'incomplete'});}} style={{...S.btn(false),color:B.danger,borderColor:B.danger+"44",whiteSpace:"nowrap"}}>Leave Team</button>
+              <button onClick={async()=>{if(!window.confirm("Leave "+team.name+"? You will lose access to this team."))return; await authFetch('/api/team/leave',{}); setTeam(null); setSub({status:'incomplete'});}} style={{...S.btn(false),color:B.danger,borderColor:B.danger+"44",whiteSpace:"nowrap"}}>Leave Team</button>
             </div>
           </div>
         )}
@@ -924,20 +925,7 @@ export default function StrikeScript() {
         {authError&&<div style={{...S.badge(B.danger),marginBottom:12,padding:"6px 12px",fontSize:11}}>{authError}</div>}
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <div><span style={S.label}>Full Name</span><input style={S.input} value={editName} onChange={e=>setEditName(e.target.value)} /></div>
-          <div><span style={S.label}>Email</span><input style={S.input} type="email" value={editEmail} onChange={e=>setEditEmail(e.target.value)} /></div>
           <div style={{display:"flex",gap:10,marginTop:8}}><button style={S.btn(true)} onClick={doUpdateProfile}>Save Changes</button><button style={S.btn(false)} onClick={()=>setShowEditProfile(false)}>Cancel</button></div>
-        </div>
-      </div></div>)}
-
-      {showChangePass&&(<div style={S.overlay} onClick={()=>setShowChangePass(false)}><div style={S.modal} onClick={e=>e.stopPropagation()}>
-        <div style={{fontSize:9,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"2px",marginBottom:4}}>Security</div>
-        <div style={{fontSize:22,fontWeight:800,color:B.black,marginBottom:20}}>Change Password</div>
-        {authError&&<div style={{...S.badge(B.danger),marginBottom:12,padding:"6px 12px",fontSize:11}}>{authError}</div>}
-        <div style={{display:"flex",flexDirection:"column",gap:14}}>
-          <div><span style={S.label}>Current Password</span><input style={S.input} type="password" placeholder="••••••••" value={oldPass} onChange={e=>setOldPass(e.target.value)} /></div>
-          <div><span style={S.label}>New Password</span><input style={S.input} type="password" placeholder="••••••••" value={newPass} onChange={e=>setNewPass(e.target.value)} /></div>
-          <div><span style={S.label}>Confirm New Password</span><input style={S.input} type="password" placeholder="••••••••" value={confirmPass} onChange={e=>setConfirmPass(e.target.value)} onKeyDown={e=>e.key==="Enter"&&doChangePassword()} /></div>
-          <div style={{display:"flex",gap:10,marginTop:8}}><button style={S.btn(true)} onClick={doChangePassword}>Update Password</button><button style={S.btn(false)} onClick={()=>setShowChangePass(false)}>Cancel</button></div>
         </div>
       </div></div>)}
 
