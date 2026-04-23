@@ -527,8 +527,8 @@ export default function StrikeScript() {
         )}
         <style>{`.cl-socialButtonsBlockButton{border:2px solid #555555!important;}.cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}.cl-dividerText{color:#444444!important;font-weight:600!important;}.cl-formFieldInput{border:2px solid #555555!important;}.cl-header,.cl-headerTitle,.cl-headerSubtitle,.cl-footer,.cl-footerAction{display:none!important;}`}</style>
         {authMode === "signIn"
-          ? <SignIn routing="virtual" afterSignInUrl="/" afterSignUpUrl="/" appearance={clerkAppearance} />
-          : <SignUp routing="virtual" afterSignUpUrl="/" afterSignInUrl="/" appearance={clerkAppearance} />
+          ? <SignIn routing="virtual" afterSignInUrl="/" afterSignUpUrl="/" signUpUrl="/" appearance={clerkAppearance} />
+          : <SignUp routing="virtual" afterSignUpUrl="/" afterSignInUrl="/" signInUrl="/" appearance={clerkAppearance} />
         }
         <button style={{width:"100%",marginTop:10,padding:"10px",background:"none",border:`1px dashed ${B.darkBorder}`,borderRadius:8,color:B.textDim,fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.5px"}} onClick={()=>{setUser({id:"admin",name:"Admin"});setSub({status:"active"});setAuthView("app");}}>
           Skip — Admin Test Mode
