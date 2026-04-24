@@ -525,7 +525,7 @@ export default function StrikeScript() {
             <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${B.cardBorder}`,fontSize:10,color:B.textDim,textAlign:"center"}}>7-day free trial · No charge until trial ends · Cancel anytime</div>
           </div>
         )}
-        <style>{`.cl-socialButtonsBlockButton{border:2px solid #555555!important;}.cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}.cl-dividerText{color:#444444!important;font-weight:600!important;}.cl-formFieldInput{border:2px solid #555555!important;}.cl-header,.cl-headerTitle,.cl-headerSubtitle,.cl-footer,.cl-footerAction{display:none!important;}`}</style>
+        <style>{`.cl-socialButtonsBlockButton{border:2px solid #555555!important;}.cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}.cl-dividerText{color:#444444!important;font-weight:600!important;}.cl-formFieldInput{border:2px solid #555555!important;}.cl-header,.cl-headerTitle,.cl-headerSubtitle,.cl-footer,.cl-footerAction,.cl-footerActionLink,.cl-footerActionText,.cl-footerPages,.cl-footerPagesLink{display:none!important;pointer-events:none!important;}`}</style>
         {authMode === "signIn"
           ? <SignIn routing="virtual" afterSignInUrl="/" afterSignUpUrl="/" signUpUrl="/" appearance={clerkAppearance} />
           : <SignUp routing="virtual" afterSignUpUrl="/" afterSignInUrl="/" signInUrl="/" appearance={clerkAppearance} />
