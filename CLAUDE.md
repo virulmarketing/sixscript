@@ -44,10 +44,10 @@ Vercel serverless functions (Node.js). Each file handles one domain:
 
 Shared utilities in `api/_lib/`:
 - `db.js` — Neon PostgreSQL client using `@neondatabase/serverless` with SQL tagged templates
-- `auth.js` — `signToken(userId)` and `verifyToken(token)` using JWT (30-day expiry)
+- `clerkAuth.js` — `getClerkUserId(req)` verifies Clerk session token; `resolveUser(clerkUserId, sql)` finds/creates the DB user record (handles email-based migration for existing users)
 - `team.js` — Team lookup helpers
 
-**Protecting endpoints:** Use `verifyToken(getTokenFromReq(req))` from `_lib/auth.js`.
+**Protecting endpoints:** Use `getClerkUserId(req)` + `resolveUser(clerkUserId, sql)` from `_lib/clerkAuth.js`. This replaces the old JWT pattern.
 
 ### Database
 
@@ -56,6 +56,8 @@ PostgreSQL via Neon (serverless). No ORM — raw SQL via Neon's `sql` tagged tem
 Schema file: `schema.sql`. Run it manually in the Neon SQL editor to initialize or migrate.
 
 Tables: `users`, `teams`, `team_members`, `invites`, `saved_plans` (plans stored as JSONB in the `data` column).
+
+`users` table has a `clerk_id VARCHAR(255) UNIQUE` column added by `migrate-clerk.js`. Existing users without a `clerk_id` are auto-linked by email on first Clerk login.
 
 ### Payments & Subscriptions
 
@@ -87,7 +89,7 @@ sub: { status, trialStart, subStart, stripeSubId, cancelAt }
 Backend (set in Vercel dashboard):
 ```
 DATABASE_URL           # Neon PostgreSQL connection string
-JWT_SECRET             # JWT signing secret
+CLERK_SECRET_KEY       # Clerk secret key (sk_live_... or sk_test_...)
 STRIPE_SECRET_KEY      # Stripe secret key
 STRIPE_WEBHOOK_SECRET  # Stripe webhook signing secret
 STRIPE_PRICE_ID        # Stripe price ID for $4.99/mo plan
@@ -98,7 +100,8 @@ SUPPORT_EMAIL          # Support inbox address
 
 Frontend (in `.env.local`):
 ```
-VITE_STRIPE_PRICE_ID   # Stripe price ID (used in App.jsx for checkout)
+VITE_STRIPE_PRICE_ID        # Stripe price ID (used in App.jsx for checkout)
+VITE_CLERK_PUBLISHABLE_KEY  # Clerk publishable key (pk_live_... or pk_test_...)
 ```
 
 ## New Sport Template Workflow

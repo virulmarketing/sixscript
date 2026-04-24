@@ -1,6 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { sql } = require('./_lib/db');
-const { verifyToken, getTokenFromReq } = require('./_lib/auth');
+const { getClerkUserId, resolveUser } = require('./_lib/clerkAuth');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
@@ -9,8 +9,9 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const decoded = verifyToken(getTokenFromReq(req));
-  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+  const clerkUserId = await getClerkUserId(req);
+  if (!clerkUserId) return res.status(401).json({ error: 'Unauthorized' });
+  const dbUser = await resolveUser(clerkUserId, sql);
 
   try {
     const { stripeSubId } = req.body;
@@ -20,7 +21,7 @@ module.exports = async (req, res) => {
     });
 
     const cancelAt = new Date(subscription.current_period_end * 1000).toISOString();
-    await sql`UPDATE users SET sub_status = 'cancelled', sub_cancel_at = ${cancelAt} WHERE id = ${decoded.userId}`;
+    await sql`UPDATE users SET sub_status = 'cancelled', sub_cancel_at = ${cancelAt} WHERE id = ${dbUser.id}`;
 
     res.status(200).json({
       status: 'cancelled',

@@ -1,6 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { sql } = require('./_lib/db');
-const { verifyToken, getTokenFromReq } = require('./_lib/auth');
+const { getClerkUserId, resolveUser } = require('./_lib/clerkAuth');
 
 module.exports = async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || '*');
@@ -10,17 +10,15 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { userId, email, successUrl, cancelUrl, promoCode } = req.body;
+    const { successUrl, cancelUrl, promoCode } = req.body;
 
-    // Check if user has already had a trial — if so, skip it
-    let hadPriorTrial = false;
-    const decoded = verifyToken(getTokenFromReq(req));
-    if (decoded) {
-      const rows = await sql`SELECT trial_start, sub_status FROM users WHERE id = ${decoded.userId}`;
-      if (rows.length > 0 && (rows[0].trial_start || ['active','cancelled','past_due','expired'].includes(rows[0].sub_status))) {
-        hadPriorTrial = true;
-      }
-    }
+    const clerkUserId = await getClerkUserId(req);
+    if (!clerkUserId) return res.status(401).json({ error: 'Unauthorized' });
+    const dbUser = await resolveUser(clerkUserId, sql);
+    const userId = dbUser.id;
+    const email = dbUser.email;
+
+    const hadPriorTrial = ['active','trialing','cancelled','past_due','expired'].includes(dbUser.sub_status) || !!(dbUser.stripe_sub_id);
 
     const existingCustomers = await stripe.customers.list({ email, limit: 1 });
     let customer;

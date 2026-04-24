@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const { sql } = require('./_lib/db');
-const { verifyToken, getTokenFromReq } = require('./_lib/auth');
+const { getClerkUserId, resolveUser } = require('./_lib/clerkAuth');
 const { getUserTeam, getUserTeams } = require('./_lib/team');
 
 const cors = (res) => {
@@ -15,8 +15,9 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const decoded = verifyToken(getTokenFromReq(req));
-    if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+    const clerkUserId = await getClerkUserId(req);
+    if (!clerkUserId) return res.status(401).json({ error: 'Unauthorized' });
+    const dbUser = await resolveUser(clerkUserId, sql);
 
     const action = req.query.action;
 
@@ -24,23 +25,19 @@ module.exports = async (req, res) => {
       const { name } = req.body;
       if (!name) return res.status(400).json({ error: 'Team name required' });
 
-      const users = await sql`SELECT id, name, email FROM users WHERE id = ${decoded.userId}`;
-      if (users.length === 0) return res.status(404).json({ error: 'User not found' });
-      const user = users[0];
-
-      const ownedTeams = await sql`SELECT id FROM teams WHERE owner_id = ${user.id}`;
+      const ownedTeams = await sql`SELECT id FROM teams WHERE owner_id = ${dbUser.id}`;
       if (ownedTeams.length >= 2) return res.status(400).json({ error: 'Head coaches can create up to 2 teams' });
 
       const teamId = 'tm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-      await sql`INSERT INTO teams (id, owner_id, name) VALUES (${teamId}, ${user.id}, ${name.trim()})`;
+      await sql`INSERT INTO teams (id, owner_id, name) VALUES (${teamId}, ${dbUser.id}, ${name.trim()})`;
 
       const memberId = 'tm_mem_' + Date.now();
       await sql`
         INSERT INTO team_members (id, team_id, user_id, email, name, role, status)
-        VALUES (${memberId}, ${teamId}, ${user.id}, ${user.email}, ${user.name}, 'head', 'active')
+        VALUES (${memberId}, ${teamId}, ${dbUser.id}, ${dbUser.email}, ${dbUser.name}, 'head', 'active')
       `;
 
-      const teams = await getUserTeams(user.id, sql);
+      const teams = await getUserTeams(dbUser.id, sql);
       return res.status(200).json({ team: teams.find(t => t.id === teamId), teams });
     }
 
@@ -48,11 +45,10 @@ module.exports = async (req, res) => {
       const { email, role, teamId } = req.body;
       if (!email) return res.status(400).json({ error: 'Email required' });
 
-      const team = await getUserTeam(decoded.userId, sql, teamId);
+      const team = await getUserTeam(dbUser.id, sql, teamId);
       if (!team) return res.status(404).json({ error: 'No team found' });
 
-      const inviterRows = await sql`SELECT name FROM users WHERE id = ${decoded.userId}`;
-      const inviterName = inviterRows[0]?.name || 'Your coach';
+      const inviterName = dbUser.name || 'Your coach';
 
       if (team.members.find(m => m.email === email.trim().toLowerCase())) {
         return res.status(409).json({ error: 'Already on team' });
@@ -64,7 +60,7 @@ module.exports = async (req, res) => {
 
       await sql`
         INSERT INTO invites (id, team_id, email, role, token, invited_by)
-        VALUES (${inviteId}, ${team.id}, ${memberEmail}, ${role || 'assistant'}, ${token}, ${decoded.userId})
+        VALUES (${inviteId}, ${team.id}, ${memberEmail}, ${role || 'assistant'}, ${token}, ${dbUser.id})
         ON CONFLICT (team_id, email) DO UPDATE SET token = ${token}, role = ${role || 'assistant'}, accepted_at = NULL
       `;
 
@@ -106,7 +102,7 @@ module.exports = async (req, res) => {
         console.error('Email send failed:', emailErr.message);
       }
 
-      const updatedTeam = await getUserTeam(decoded.userId, sql);
+      const updatedTeam = await getUserTeam(dbUser.id, sql);
       return res.status(200).json({ team: updatedTeam });
     }
 
@@ -114,12 +110,8 @@ module.exports = async (req, res) => {
       const { inviteToken } = req.body;
       if (!inviteToken) return res.status(400).json({ error: 'Invite token required' });
 
-      const users = await sql`SELECT id, name, email FROM users WHERE id = ${decoded.userId}`;
-      if (users.length === 0) return res.status(404).json({ error: 'User not found' });
-      const user = users[0];
-
       const { acceptInvite } = require('./_lib/team');
-      const team = await acceptInvite(user.id, user.name, user.email, inviteToken, sql);
+      const team = await acceptInvite(dbUser.id, dbUser.name, dbUser.email, inviteToken, sql);
       if (!team) return res.status(404).json({ error: 'Invite not found or already accepted' });
 
       return res.status(200).json({ team });
@@ -128,7 +120,7 @@ module.exports = async (req, res) => {
     if (action === 'update') {
       const { primaryColor, secondaryColor, name, teamId } = req.body;
 
-      const team = await getUserTeam(decoded.userId, sql, teamId);
+      const team = await getUserTeam(dbUser.id, sql, teamId);
       if (!team) return res.status(404).json({ error: 'No team found' });
 
       if (primaryColor !== undefined || secondaryColor !== undefined) {
@@ -141,7 +133,7 @@ module.exports = async (req, res) => {
         await sql`UPDATE teams SET name = ${name} WHERE id = ${team.id}`;
       }
 
-      const updatedTeam = await getUserTeam(decoded.userId, sql, team.id);
+      const updatedTeam = await getUserTeam(dbUser.id, sql, team.id);
       return res.status(200).json({ team: updatedTeam });
     }
 
@@ -149,12 +141,12 @@ module.exports = async (req, res) => {
       const { email, role, teamId } = req.body;
       if (!email || !role) return res.status(400).json({ error: 'Email and role required' });
 
-      const team = await getUserTeam(decoded.userId, sql, teamId);
+      const team = await getUserTeam(dbUser.id, sql, teamId);
       if (!team) return res.status(404).json({ error: 'No team found' });
 
       await sql`UPDATE team_members SET role = ${role} WHERE team_id = ${team.id} AND email = ${email.toLowerCase()}`;
 
-      const updatedTeam = await getUserTeam(decoded.userId, sql, team.id);
+      const updatedTeam = await getUserTeam(dbUser.id, sql, team.id);
       return res.status(200).json({ team: updatedTeam });
     }
 
@@ -162,31 +154,27 @@ module.exports = async (req, res) => {
       const { email, teamId } = req.body;
       if (!email) return res.status(400).json({ error: 'Email required' });
 
-      const team = await getUserTeam(decoded.userId, sql, teamId);
+      const team = await getUserTeam(dbUser.id, sql, teamId);
       if (!team) return res.status(404).json({ error: 'No team found' });
 
       await sql`DELETE FROM team_members WHERE team_id = ${team.id} AND email = ${email.toLowerCase()}`;
       await sql`DELETE FROM invites WHERE team_id = ${team.id} AND email = ${email.toLowerCase()}`;
 
-      const updatedTeam = await getUserTeam(decoded.userId, sql, team.id);
+      const updatedTeam = await getUserTeam(dbUser.id, sql, team.id);
       return res.status(200).json({ team: updatedTeam });
     }
 
     if (action === 'leave') {
       const { teamId } = req.body;
-      const userRows = await sql`SELECT email FROM users WHERE id = ${decoded.userId}`;
-      if (userRows.length === 0) return res.status(404).json({ error: 'User not found' });
-      const userEmail = userRows[0].email;
-
-      const team = await getUserTeam(decoded.userId, sql, teamId);
+      const team = await getUserTeam(dbUser.id, sql, teamId);
       if (team) {
-        await sql`DELETE FROM team_members WHERE team_id = ${team.id} AND email = ${userEmail}`;
-        await sql`DELETE FROM invites WHERE team_id = ${team.id} AND email = ${userEmail}`;
+        await sql`DELETE FROM team_members WHERE team_id = ${team.id} AND email = ${dbUser.email}`;
+        await sql`DELETE FROM invites WHERE team_id = ${team.id} AND email = ${dbUser.email}`;
       }
 
-      const remainingTeams = await getUserTeams(decoded.userId, sql);
+      const remainingTeams = await getUserTeams(dbUser.id, sql);
       if (remainingTeams.length === 0) {
-        await sql`UPDATE users SET sub_status = 'incomplete' WHERE id = ${decoded.userId}`;
+        await sql`UPDATE users SET sub_status = 'incomplete' WHERE id = ${dbUser.id}`;
       }
 
       return res.status(200).json({ ok: true });

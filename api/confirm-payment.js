@@ -1,6 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { sql } = require('./_lib/db');
-const { verifyToken, getTokenFromReq } = require('./_lib/auth');
+const { getClerkUserId, resolveUser } = require('./_lib/clerkAuth');
 
 const cors = (res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -13,8 +13,9 @@ module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const decoded = verifyToken(getTokenFromReq(req));
-  if (!decoded) return res.status(401).json({ error: 'Unauthorized' });
+  const clerkUserId = await getClerkUserId(req);
+  if (!clerkUserId) return res.status(401).json({ error: 'Unauthorized' });
+  const dbUser = await resolveUser(clerkUserId, sql);
 
   const { sessionId } = req.body;
   if (!sessionId) return res.status(400).json({ error: 'sessionId required' });
@@ -28,7 +29,7 @@ module.exports = async (req, res) => {
           sub_status = 'trialing',
           stripe_customer_id = ${session.customer},
           stripe_sub_id = ${session.subscription}
-        WHERE id = ${decoded.userId}
+        WHERE id = ${dbUser.id}
       `;
       return res.status(200).json({ sub: { status: 'trialing', trialStart: new Date().toISOString() } });
     }
