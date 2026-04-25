@@ -525,7 +525,18 @@ export default function StrikeScript() {
             <div style={{marginTop:8,paddingTop:8,borderTop:`1px solid ${B.cardBorder}`,fontSize:10,color:B.textDim,textAlign:"center"}}>7-day free trial · No charge until trial ends · Cancel anytime</div>
           </div>
         )}
-        <style>{`.cl-socialButtonsBlockButton{border:2px solid #555555!important;}.cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}.cl-dividerText{color:#444444!important;font-weight:600!important;}.cl-formFieldInput{border:2px solid #555555!important;}.cl-header,.cl-headerTitle,.cl-headerSubtitle,.cl-footer,.cl-footerAction,.cl-footerActionLink,.cl-footerActionText,.cl-footerPages,.cl-footerPagesLink{display:none!important;pointer-events:none!important;}`}</style>
+        <style>{`
+          .cl-card{padding:20px 24px!important;}
+          .cl-main{gap:10px!important;}
+          .cl-socialButtonsBlockButton{border:2px solid #555555!important;}
+          .cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}
+          .cl-dividerRow{margin:4px 0!important;align-items:center!important;gap:8px!important;display:flex!important;}
+          .cl-dividerLine{height:1px!important;min-height:1px!important;max-height:1px!important;flex:1!important;border:none!important;background:#DDDDDD!important;padding:0!important;display:block!important;}
+          .cl-dividerText{color:#444444!important;font-weight:600!important;}
+          .cl-formFieldInput{border:2px solid #555555!important;}
+          .cl-formFieldRow{margin-bottom:6px!important;}
+          .cl-header,.cl-headerTitle,.cl-headerSubtitle,.cl-footer,.cl-footerAction,.cl-footerActionLink,.cl-footerActionText,.cl-footerPages,.cl-footerPagesLink{display:none!important;pointer-events:none!important;}
+        `}</style>
         {authMode === "signIn"
           ? <SignIn routing="virtual" afterSignInUrl="/" afterSignUpUrl="/" signUpUrl="/" appearance={clerkAppearance} />
           : <SignUp routing="virtual" afterSignUpUrl="/" afterSignInUrl="/" signInUrl="/" appearance={clerkAppearance} />
