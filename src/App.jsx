@@ -470,17 +470,17 @@ export default function StrikeScript() {
     const clerkAppearance = {
       variables: {
         colorPrimary: primary,
-        colorBackground: '#FFFFFF',
+        colorBackground: '#F8F7F5',
         colorText: '#1A1A1A',
         colorTextSecondary: '#333333',
-        colorInputBackground: '#F8F7F5',
+        colorInputBackground: '#FFFFFF',
         colorNeutral: '#999999',
         fontFamily: "'Helvetica Neue',Helvetica,Arial,sans-serif",
         borderRadius: '8px',
       },
       elements: {
-        rootBox: { width: '100%', minWidth: 'unset', display: 'flex', flexDirection: 'column' },
-        card: { boxShadow: 'none', background: 'transparent', borderRadius: '0', width: '100%', minWidth: 'unset', margin: '0', padding: '0' },
+        rootBox: { width: '100%', minWidth: 'unset', display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+        card: { boxShadow: 'none', background: 'transparent', borderRadius: '0', width: '100%', minWidth: 'unset', margin: '0', padding: '0', overflow: 'hidden' },
         headerTitle: { display: 'none' },
         headerSubtitle: { display: 'none' },
         footer: { display: 'none' },
@@ -492,7 +492,7 @@ export default function StrikeScript() {
       },
     };
     const authFormJSX = (
-      <div id="auth-form" style={{width:"100%",maxWidth:400,background:"#FFFFFF",borderRadius:16,padding:mob?"24px 20px":"32px 28px",boxShadow:"0 12px 40px rgba(0,0,0,0.08)"}}>
+      <div id="auth-form" style={{width:"100%",maxWidth:400,background:"#F8F7F5",borderRadius:16,padding:mob?"24px 20px":"32px 28px",boxShadow:"0 12px 40px rgba(0,0,0,0.08)",overflow:"hidden"}}>
         {authMode === "signUp" ? (
           <div style={{marginBottom:16}}>
             <div style={{fontSize:10,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginBottom:6}}>{config.copy.authEyebrow || "Get Started Free"}</div>
@@ -526,8 +526,10 @@ export default function StrikeScript() {
           </div>
         )}
         <style>{`
-          .cl-card{padding:0!important;box-shadow:none!important;background:transparent!important;}
-          .cl-main{gap:10px!important;}
+          .cl-card{padding:0!important;box-shadow:none!important;background:#F8F7F5!important;width:100%!important;overflow:hidden!important;}
+          .cl-main{gap:10px!important;width:100%!important;}
+          .cl-formFieldLabel{text-transform:uppercase!important;font-size:10px!important;letter-spacing:1.5px!important;font-weight:700!important;color:#888888!important;}
+          *[class^="cl-"]{max-width:100%!important;box-sizing:border-box!important;}
           .cl-socialButtonsBlockButton{border:1px solid #DDDDDD!important;}
           .cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}
           .cl-dividerRow{margin:4px 0!important;align-items:center!important;gap:8px!important;display:flex!important;}
