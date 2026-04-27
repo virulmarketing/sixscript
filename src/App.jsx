@@ -542,9 +542,6 @@ export default function StrikeScript() {
           ? <SignIn routing="virtual" afterSignInUrl="/" afterSignUpUrl="/" signUpUrl="/" appearance={clerkAppearance} />
           : <SignUp routing="virtual" afterSignUpUrl="/" afterSignInUrl="/" signInUrl="/" appearance={clerkAppearance} />
         }
-        <button style={{width:"100%",marginTop:10,padding:"10px",background:"none",border:`1px dashed ${B.cardBorder}`,borderRadius:8,color:B.textDim,fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.5px"}} onClick={()=>{setUser({id:"admin",name:"Admin"});setSub({status:"active"});setAuthView("app");}}>
-          Skip — Admin Test Mode
-        </button>
         <div style={{textAlign:"center",fontSize:12,color:B.textSec,marginTop:10}}>
           {authMode === "signIn" ? "Don't have an account? " : "Already have an account? "}
           <button onClick={()=>setAuthMode(authMode==="signIn"?"signUp":"signIn")} style={{background:"none",border:"none",color:B.red,fontWeight:700,cursor:"pointer",fontSize:12}}>{authMode==="signIn"?"Sign Up Free":"Sign In"}</button>
