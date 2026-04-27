@@ -475,33 +475,33 @@ export default function StrikeScript() {
         colorTextSecondary: '#333333',
         colorInputBackground: '#F8F7F5',
         colorNeutral: '#999999',
-        fontFamily: 'Inter, system-ui, sans-serif',
+        fontFamily: "'Helvetica Neue',Helvetica,Arial,sans-serif",
         borderRadius: '8px',
       },
       elements: {
         rootBox: { width: '100%', minWidth: 'unset', display: 'flex', flexDirection: 'column' },
-        card: { boxShadow: '0 8px 40px rgba(0,0,0,0.4)', background: '#FFFFFF', borderRadius: '16px', width: '100%', minWidth: 'unset', margin: '0' },
+        card: { boxShadow: 'none', background: 'transparent', borderRadius: '0', width: '100%', minWidth: 'unset', margin: '0', padding: '0' },
         headerTitle: { display: 'none' },
         headerSubtitle: { display: 'none' },
         footer: { display: 'none' },
         dividerRow: { marginTop: '4px', marginBottom: '4px' },
         dividerText: { color: '#444444', fontWeight: '600' },
-        socialButtonsBlockButton: { border: '1.5px solid #AAAAAA' },
+        socialButtonsBlockButton: { border: '1px solid #DDDDDD' },
         socialButtonsBlockButtonText: { color: '#1A1A1A', fontWeight: '600' },
         formFieldInput: { color: '#1A1A1A' },
       },
     };
     const authFormJSX = (
-      <div id="auth-form" style={{width:"100%",maxWidth:400}}>
+      <div id="auth-form" style={{width:"100%",maxWidth:400,background:"#FFFFFF",borderRadius:16,padding:mob?"24px 20px":"32px 28px",boxShadow:"0 12px 40px rgba(0,0,0,0.08)"}}>
         {authMode === "signUp" ? (
-          <div style={{marginBottom:8}}>
+          <div style={{marginBottom:16}}>
             <div style={{fontSize:10,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginBottom:6}}>{config.copy.authEyebrow || "Get Started Free"}</div>
-            <div style={{fontSize:24,fontWeight:800,color:B.white,letterSpacing:"-0.5px",marginBottom:12}}>Create Your Account</div>
+            <div style={{fontSize:24,fontWeight:800,color:B.text,letterSpacing:"-0.5px",marginBottom:0}}>Create Your Account</div>
           </div>
         ) : (
-          <div style={{marginBottom:8}}>
+          <div style={{marginBottom:16}}>
             <div style={{fontSize:10,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginBottom:6}}>Welcome Back</div>
-            <div style={{fontSize:24,fontWeight:800,color:B.white,letterSpacing:"-0.5px",marginBottom:12}}>Sign In to {config.appName}</div>
+            <div style={{fontSize:24,fontWeight:800,color:B.text,letterSpacing:"-0.5px",marginBottom:0}}>Sign In to {config.appName}</div>
           </div>
         )}
         {authMode === "signUp" && pendingInviteToken && (
@@ -513,8 +513,8 @@ export default function StrikeScript() {
         {authMode === "signUp" && !pendingInviteToken && (
           <div style={{background:B.surface,border:`1px solid ${B.cardBorder}`,borderRadius:10,padding:"12px 14px",marginBottom:12}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",marginBottom:8}}>
-              <div style={{fontSize:12,fontWeight:800,color:B.black}}>{config.appName}</div>
-              <div><span style={{fontSize:18,fontWeight:800,color:B.black}}>{config.price}</span><span style={{fontSize:11,color:B.textSec}}>/mo after trial</span></div>
+              <div style={{fontSize:12,fontWeight:800,color:B.text}}>{config.appName}</div>
+              <div><span style={{fontSize:18,fontWeight:800,color:B.text}}>{config.price}</span><span style={{fontSize:11,color:B.textSec}}>/mo after trial</span></div>
             </div>
             {config.copy.authFeatures.map(f=>(
               <div key={f} style={{display:"flex",gap:8,alignItems:"center",marginBottom:4}}>
@@ -526,22 +526,23 @@ export default function StrikeScript() {
           </div>
         )}
         <style>{`
-          .cl-card{padding:20px 24px!important;}
+          .cl-card{padding:0!important;box-shadow:none!important;background:transparent!important;}
           .cl-main{gap:10px!important;}
-          .cl-socialButtonsBlockButton{border:2px solid #555555!important;}
+          .cl-socialButtonsBlockButton{border:1px solid #DDDDDD!important;}
           .cl-socialButtonsBlockButtonText{color:#1A1A1A!important;font-weight:600!important;}
           .cl-dividerRow{margin:4px 0!important;align-items:center!important;gap:8px!important;display:flex!important;}
           .cl-dividerLine{height:1px!important;min-height:1px!important;max-height:1px!important;flex:1!important;border:none!important;background:#DDDDDD!important;padding:0!important;display:block!important;}
           .cl-dividerText{color:#444444!important;font-weight:600!important;}
-          .cl-formFieldInput{border:2px solid #555555!important;}
+          .cl-formFieldInput{border:1px solid #DDDDDD!important;}
           .cl-formFieldRow{margin-bottom:6px!important;}
+          .cl-formButtonPrimary{text-transform:uppercase!important;letter-spacing:1px!important;font-weight:700!important;}
           .cl-header,.cl-headerTitle,.cl-headerSubtitle,.cl-footer,.cl-footerAction,.cl-footerActionLink,.cl-footerActionText,.cl-footerPages,.cl-footerPagesLink{display:none!important;pointer-events:none!important;}
         `}</style>
         {authMode === "signIn"
           ? <SignIn routing="virtual" afterSignInUrl="/" afterSignUpUrl="/" signUpUrl="/" appearance={clerkAppearance} />
           : <SignUp routing="virtual" afterSignUpUrl="/" afterSignInUrl="/" signInUrl="/" appearance={clerkAppearance} />
         }
-        <button style={{width:"100%",marginTop:10,padding:"10px",background:"none",border:`1px dashed ${B.darkBorder}`,borderRadius:8,color:B.textDim,fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.5px"}} onClick={()=>{setUser({id:"admin",name:"Admin"});setSub({status:"active"});setAuthView("app");}}>
+        <button style={{width:"100%",marginTop:10,padding:"10px",background:"none",border:`1px dashed ${B.cardBorder}`,borderRadius:8,color:B.textDim,fontSize:11,fontWeight:600,cursor:"pointer",letterSpacing:"0.5px"}} onClick={()=>{setUser({id:"admin",name:"Admin"});setSub({status:"active"});setAuthView("app");}}>
           Skip — Admin Test Mode
         </button>
         <div style={{textAlign:"center",fontSize:12,color:B.textSec,marginTop:10}}>
