@@ -184,19 +184,8 @@ export default function StrikeScript() {
           const activeT = data.team || allTeams[0] || null;
           setTeam(activeT); setActiveTeamId(activeT?.id || null);
 
-          // New user with no invite → go straight to checkout
-          if (data.sub?.status === 'incomplete' && !invToken) {
-            const token = await getToken();
-            const session = await fetch('/api/create-checkout-session', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              body: JSON.stringify({ successUrl: window.location.origin + '/?stripe=success', cancelUrl: window.location.origin + '/?stripe=cancel' }),
-            }).then(r => r.json());
-            if (session.url) { window.location.href = session.url; return true; }
-          }
-
           const s = data.sub || await ld("sk-sub-"+data.user.id, null); setSub(s);
-          const pm = await ld("sk-pm-"+data.user.id, null); setPaymentMethod(pm);
+          localStorage.removeItem("sk-pm-"+data.user.id);
           setFavorites(new Set(await ld("sk-fav",[])));setCustomDrills(await ld("sk-cd",[]));setSavedSegments(await ld("sk-ss",[]));setCalendarPlans(await ld("sk-cal",{}));
           const plansRes = await authFetch('/api/plans/list', {});setSavedPlans(plansRes?.plans||[]);
           setAuthView("app");
@@ -234,15 +223,14 @@ export default function StrikeScript() {
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ successUrl: STRIPE.SUCCESS_URL, cancelUrl: STRIPE.CANCEL_URL, promoCode: promoCode.trim() || undefined }),
       });
-      const data = await res.json();
+      let data;
+      try { data = await res.json(); }
+      catch { const text = await res.text().catch(()=>""); setAuthError(`Server error (${res.status}): ${text.slice(0,200)}`); setSubLoading(false); return; }
       if (data.url) window.location.href = data.url;
-      else { setAuthError("Failed to create checkout session"); setSubLoading(false); }
+      else { setAuthError(data.error || "Failed to create checkout session"); setSubLoading(false); }
     } catch (e) {
-      console.warn("Stripe API not connected — using simulated subscription");
-      const newSub = { status: "active", subStart: new Date().toISOString(), stripeCustomerId: "cus_simulated", stripeSubId: "sub_simulated" };
-      await sv("sk-sub-"+user.id, newSub); setSub(newSub);
-      setPaymentMethod({ last4: "4242", exp: "12/28", brand: "Visa" });
-      await sv("sk-pm-"+user.id, { last4: "4242", exp: "12/28", brand: "Visa" });
+      console.error("Checkout session error:", e);
+      setAuthError(`Network error: ${e.message}`);
       setSubLoading(false);
     }
   };
@@ -250,16 +238,17 @@ export default function StrikeScript() {
   const openCustomerPortal = async () => {
     setSubLoading(true);
     try {
+      const token = await getToken();
       const res = await fetch(STRIPE.API_URL + "/create-portal-session", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id, stripeCustomerId: sub?.stripeCustomerId }),
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
-      else { setAuthError("Failed to open billing portal"); setSubLoading(false); }
+      else { setAuthError(data.error || "Failed to open billing portal"); setSubLoading(false); }
     } catch (e) {
-      console.warn("Stripe API not connected — portal unavailable in dev mode");
+      console.error("Portal error:", e);
+      setAuthError("Something went wrong opening billing portal.");
       setSubLoading(false);
     }
   };
@@ -785,9 +774,9 @@ export default function StrikeScript() {
       </div>
       <div style={{background:B.black,padding:mob?"32px 16px 40px":"56px 32px 64px",textAlign:"center"}}>
         <LogoMark size={mob?48:64} variant="red" />
-        <div style={{fontSize:mob?9:11,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginTop:20,marginBottom:12}}>{sub?.status==="cancelled"?"Subscription Ended":sub?.status==="incomplete"?"Payment Required":"Free Trial Ended"}</div>
-        <div style={{fontSize:mob?24:36,fontWeight:800,color:B.white,letterSpacing:"-1px",lineHeight:1.2}}>{sub?.status==="incomplete"?"Complete your payment\nto get started":"Upgrade to keep\nbuilding training plans"}</div>
-        <div style={{color:B.textSec,fontSize:mob?12:14,marginTop:12,maxWidth:400,margin:"12px auto 0"}}>{sub?.status==="incomplete"?`Your account is ready — just complete the ${config.trialDays}-day free trial signup to get full access. No charge until your trial ends.`:config.copy.paywallDescription}</div>
+        <div style={{fontSize:mob?9:11,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginTop:20,marginBottom:12}}>{sub?.status==="cancelled"?"Subscription Ended":sub?.status==="incomplete"?"One Last Step":"Free Trial Ended"}</div>
+        <div style={{fontSize:mob?24:36,fontWeight:800,color:B.white,letterSpacing:"-1px",lineHeight:1.2}}>{sub?.status==="incomplete"?`Start your ${config.trialDays}-day\nfree trial`:"Upgrade to keep\nbuilding training plans"}</div>
+        <div style={{color:B.textSec,fontSize:mob?12:14,marginTop:12,maxWidth:400,margin:"12px auto 0"}}>{sub?.status==="incomplete"?`Your account is ready. No charge for ${config.trialDays} days — cancel anytime before your trial ends.`:config.copy.paywallDescription}</div>
       </div>
       <div style={{...S.body,maxWidth:480,margin:"0 auto"}}>
         <div style={{...S.card,padding:mob?24:36,textAlign:"center",marginTop:-20,position:"relative",zIndex:1}}>
@@ -803,8 +792,9 @@ export default function StrikeScript() {
             <input type="text" value={promoCode} onChange={e=>setPromoCode(e.target.value.toUpperCase())} placeholder="Enter promo code" style={{width:"100%",padding:"10px 12px",borderRadius:8,border:`1px solid ${B.cardBorder}`,background:B.offWhite,fontSize:13,fontFamily:"inherit",color:B.text,outline:"none",letterSpacing:"1px",boxSizing:"border-box"}} />
           </div>
           <button onClick={doSubscribe} disabled={subLoading} style={{...S.btn(true),width:"100%",padding:"14px",fontSize:13,marginTop:12,opacity:subLoading?0.6:1}}>
-            {subLoading ? "Redirecting to Stripe..." : `Subscribe Now — ${config.price}/mo`}
+            {subLoading ? "Redirecting to Stripe..." : (sub?.status==="incomplete" ? `Start Free Trial — ${config.price}/mo after` : `Subscribe Now — ${config.price}/mo`)}
           </button>
+          {authError && <div style={{marginTop:10,padding:"8px 12px",borderRadius:8,background:"#FEE2E2",color:"#B91C1C",fontSize:12,textAlign:"center"}}>{authError}</div>}
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginTop:12}}>
             <svg width="16" height="16" viewBox="0 0 32 32" fill="none"><rect width="32" height="32" rx="6" fill="#635BFF"/><path d="M15 12.5c0-.83.68-1.5 1.5-1.5s1.5.67 1.5 1.5c0 .55-.32 1.03-.78 1.27-.28.14-.72.4-.72.73v.5" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"/><circle cx="16" cy="17.5" r=".75" fill="#fff"/></svg>
             <span style={{fontSize:10,color:B.textDim}}>Secured by Stripe. Cancel anytime.</span>
@@ -913,6 +903,7 @@ export default function StrikeScript() {
                 <input type="text" value={promoCode} onChange={e=>setPromoCode(e.target.value.toUpperCase())} placeholder="Promo code (optional)" style={{flex:1,minWidth:140,padding:"8px 12px",borderRadius:8,border:`1px solid ${B.cardBorder}`,background:B.offWhite,fontSize:12,fontFamily:"inherit",color:B.text,outline:"none",letterSpacing:"1px"}} />
                 <button onClick={doSubscribe} disabled={subLoading} style={S.btn(true)}>{subLoading?"Redirecting...":"Add Payment Method"}</button>
               </div>}
+              {(sub?.status==="active"||sub?.status==="trialing"||sub?.status==="cancelled")&&<button onClick={openCustomerPortal} disabled={subLoading} style={S.btn(false)}>{subLoading?"Loading...":"Manage on Stripe"}</button>}
             </div>
           )}
           <div style={{display:"flex",alignItems:"center",gap:6,marginTop:12,paddingTop:12,borderTop:`1px solid ${B.cardBorder}`}}>
