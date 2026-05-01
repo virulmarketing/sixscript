@@ -54,6 +54,18 @@ CREATE TABLE IF NOT EXISTS saved_plans (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS calendar_plans (
+  id TEXT PRIMARY KEY,
+  team_id TEXT REFERENCES teams(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id),
+  date_key TEXT NOT NULL,
+  plan_data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_calendar_plans_team ON calendar_plans(team_id) WHERE team_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_calendar_plans_user ON calendar_plans(user_id) WHERE team_id IS NULL;
+
 -- Migrations (safe to re-run)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_start TIMESTAMPTZ;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS sub_cancel_at TIMESTAMPTZ;
