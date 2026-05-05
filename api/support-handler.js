@@ -21,7 +21,9 @@ module.exports = async (req, res) => {
       other: 'Other',
     };
     const categoryLabel = categoryLabels[category] || category || 'General';
-    const supportEmail = process.env.SUPPORT_EMAIL || 'support@strikescript.com';
+    const appName = process.env.APP_NAME || 'Support';
+    const fromEmail = process.env.FROM_EMAIL || 'onboarding@resend.dev';
+    const supportEmail = process.env.SUPPORT_EMAIL || 'support@example.com';
 
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
@@ -30,14 +32,14 @@ module.exports = async (req, res) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'StrikeScript Support <onboarding@resend.dev>',
+        from: fromEmail,
         to: [supportEmail],
         reply_to: email,
         subject: `[${categoryLabel}] ${subject}`,
         html: `
           <div style="font-family:sans-serif;max-width:600px;margin:0 auto;">
             <div style="background:#111;padding:20px 24px;border-radius:8px 8px 0 0;">
-              <h2 style="color:#DC2626;margin:0;font-size:18px;">New Support Request</h2>
+              <h2 style="color:#fff;margin:0;font-size:18px;">New Support Request — ${appName}</h2>
             </div>
             <div style="background:#f7f5f0;padding:24px;border:1px solid #e5e0d8;border-top:none;border-radius:0 0 8px 8px;">
               <table style="width:100%;border-collapse:collapse;margin-bottom:20px;">
@@ -50,7 +52,7 @@ module.exports = async (req, res) => {
                 <div style="font-size:14px;color:#1a1a1a;line-height:1.7;white-space:pre-wrap">${message.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
               </div>
               <div style="margin-top:20px;padding-top:16px;border-top:1px solid #e5e0d8;">
-                <a href="mailto:${email}" style="display:inline-block;background:#DC2626;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:700;font-size:13px;">Reply to ${name} →</a>
+                <a href="mailto:${email}" style="display:inline-block;background:#111;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:700;font-size:13px;">Reply to ${name} →</a>
               </div>
             </div>
           </div>
@@ -58,7 +60,6 @@ module.exports = async (req, res) => {
       }),
     });
 
-    // Send confirmation to the user
     await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -66,13 +67,13 @@ module.exports = async (req, res) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'StrikeScript Support <onboarding@resend.dev>',
+        from: fromEmail,
         to: [email],
-        subject: `We got your message — StrikeScript Support`,
+        subject: `We got your message — ${appName} Support`,
         html: `
           <div style="font-family:sans-serif;max-width:500px;margin:0 auto;">
             <div style="background:#111;padding:20px 24px;border-radius:8px 8px 0 0;">
-              <h2 style="color:#DC2626;margin:0;font-size:18px;">We received your message</h2>
+              <h2 style="color:#fff;margin:0;font-size:18px;">We received your message</h2>
             </div>
             <div style="background:#f7f5f0;padding:24px;border:1px solid #e5e0d8;border-top:none;border-radius:0 0 8px 8px;">
               <p style="font-size:15px;color:#1a1a1a;margin-bottom:12px;">Hi ${name},</p>
