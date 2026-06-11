@@ -2,8 +2,8 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from "react"
 import { useUser, useAuth, useClerk, SignIn, SignUp } from "@clerk/react";
 import config from "./config.js";
 
-const CATEGORIES = config.categories;
-const SEGMENT_TEMPLATES = config.segmentTemplates;
+const ALL_CATEGORIES = config.categories;
+const ALL_SEGMENT_TEMPLATES = config.segmentTemplates;
 
 // ─── UTILITIES ──────────────────────────────────────────────────────────────
 const formatTime = (h, m) => { const ap = h >= 12 ? "PM" : "AM"; const hr = h > 12 ? h - 12 : h === 0 ? 12 : h; return `${hr}:${String(m).padStart(2,"0")} ${ap}`; };
@@ -59,6 +59,7 @@ const LogoMark = ({ size = 36, variant = "red" }) => {
 export default function StrikeScript() {
   const [drills, setDrills] = useState([]);
   useEffect(() => { import('./data/drills.json').then(m => setDrills(m.default)); }, []);
+  useEffect(() => { ld("sk-ft","tackle").then(ft => setFootballType(ft)); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   useEffect(() => { const h = () => setIsMobile(window.innerWidth < 768); window.addEventListener("resize", h); return () => window.removeEventListener("resize", h); }, []);
@@ -139,6 +140,7 @@ export default function StrikeScript() {
   const [searchQ, setSearchQ] = useState(""); const [filterCat, setFilterCat] = useState("suggested"); const [filterIntensity, setFilterIntensity] = useState("all");
   const [favorites, setFavorites] = useState(new Set());
   const [customDrills, setCustomDrills] = useState([]);
+  const [footballType, setFootballType] = useState("tackle");
   const [savedSegments, setSavedSegments] = useState([]);
   const [savedPlans, setSavedPlans] = useState([]);
   const [calendarPlans, setCalendarPlans] = useState({});
@@ -186,7 +188,7 @@ export default function StrikeScript() {
 
           const s = data.sub || await ld("sk-sub-"+data.user.id, null); setSub(s);
           localStorage.removeItem("sk-pm-"+data.user.id);
-          setFavorites(new Set(await ld("sk-fav",[])));setCustomDrills(await ld("sk-cd",[]));setSavedSegments(await ld("sk-ss",[]));
+          setFavorites(new Set(await ld("sk-fav",[])));setCustomDrills(await ld("sk-cd",[]));setSavedSegments(await ld("sk-ss",[]));setFootballType(await ld("sk-ft","tackle"));
           const plansRes = await authFetch('/api/plans/list', {});setSavedPlans(plansRes?.plans||[]);
           const calRes = await authFetch('/api/plans/calendar-list', {});setCalendarPlans(calRes?.plans||{});
           setAuthView("app");
@@ -352,14 +354,19 @@ export default function StrikeScript() {
   const teamCoaches = team?.members || (user ? [{ userId: user.id, name: user.name, email: user.email, role: "head" }] : []);
 
   const allDrills = useMemo(() => [...drills, ...customDrills], [drills, customDrills]);
+
+  const toggleFootballType = async (type) => { setFootballType(type); await sv("sk-ft", type); };
+  const CATEGORIES = useMemo(() => ALL_CATEGORIES.filter(c => c.footballType === "both" || c.footballType === footballType), [footballType]);
+  const SEGMENT_TEMPLATES = useMemo(() => ALL_SEGMENT_TEMPLATES.filter(t => t.footballType === "both" || t.footballType === footballType), [footballType]);
+
   const totalMin = (end24*60+endM)-(start24*60+startM);
   const usedMin = segments.reduce((s,seg)=>{if(seg.splitType&&seg.splitType!=="full"&&seg.tracks) return s+(seg.duration||0); return s+seg.drills.reduce((a,d)=>a+d.allocatedMin,0);},0);
   const remainMin = totalMin - usedMin;
   const activeSeg = segments[activeSegIdx];
   const activeTrack = activeSeg?.tracks?.[activeTrackIdx] || null;
-  const suggestedCats = useMemo(() => { if(!activeSeg) return []; if(activeTrack) return activeTrack.suggestedCats||[]; return SEGMENT_TEMPLATES.find(t=>t.name===activeSeg.name)?.suggestedCats||activeSeg.suggestedCats||[]; }, [activeSeg, activeTrack]);
+  const suggestedCats = useMemo(() => { if(!activeSeg) return []; if(activeTrack) return activeTrack.suggestedCats||[]; return SEGMENT_TEMPLATES.find(t=>t.name===activeSeg.name)?.suggestedCats||activeSeg.suggestedCats||[]; }, [activeSeg, activeTrack, SEGMENT_TEMPLATES]);
   const filteredDrills = useMemo(() => {
-    let pool = allDrills;
+    let pool = allDrills.filter(d => { const ft = d.footballType || "both"; return ft === "both" || ft === footballType; });
     if (filterCat==="suggested"&&suggestedCats.length>0) pool=pool.filter(d=>suggestedCats.includes(d.cat));
     else if (filterCat==="favorites") pool=pool.filter(d=>favorites.has(d.id));
     else if (filterCat!=="all"&&filterCat!=="suggested") pool=pool.filter(d=>d.cat===filterCat);
@@ -367,7 +374,7 @@ export default function StrikeScript() {
     if (searchQ.trim()) { const q=searchQ.toLowerCase(); pool=pool.filter(d=>d.name.toLowerCase().includes(q)||d.desc.toLowerCase().includes(q)); }
     pool.sort((a,b)=>(favorites.has(a.id)?0:1)-(favorites.has(b.id)?0:1));
     return pool;
-  }, [filterCat,filterIntensity,searchQ,suggestedCats,allDrills,favorites]);
+  }, [filterCat,filterIntensity,searchQ,suggestedCats,allDrills,favorites,footballType]);
 
   const toggleFavorite = async id => { const n=new Set(favorites); n.has(id)?n.delete(id):n.add(id); setFavorites(n); await sv("sk-fav",[...n]); };
   const createCustomDrill = async () => { if(!newDrill.name.trim()) return; const d={...newDrill,id:"c_"+Date.now(),dur:Math.max(1,newDrill.dur),custom:true}; const n=[...customDrills,d]; setCustomDrills(n); await sv("sk-cd",n); setNewDrill({name:"",cat:"technical",dur:5,intensity:"Medium",desc:"",video:""}); setShowCreateDrill(false); };
@@ -735,6 +742,11 @@ export default function StrikeScript() {
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:mob?6:12}}>
+        {/* Tackle / Flag toggle */}
+        <div style={{display:"flex",alignItems:"center",background:"rgba(255,255,255,0.08)",borderRadius:20,padding:2,gap:1}}>
+          <button onClick={()=>toggleFootballType("tackle")} style={{background:footballType==="tackle"?B.red:"transparent",color:footballType==="tackle"?"#fff":"#aaa",border:"none",borderRadius:18,padding:mob?"3px 7px":"3px 10px",fontSize:mob?8:10,fontWeight:700,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap"}}>🏈 {mob?"TK":"Tackle"}</button>
+          <button onClick={()=>toggleFootballType("flag")} style={{background:footballType==="flag"?"#F59E0B":"transparent",color:footballType==="flag"?"#fff":"#aaa",border:"none",borderRadius:18,padding:mob?"3px 7px":"3px 10px",fontSize:mob?8:10,fontWeight:700,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap"}}>🏴 {mob?"FG":"Flag"}</button>
+        </div>
         {sub?.status==="trial"&&trialDaysLeft>0&&<div style={{background:B.redDim,border:`1px solid ${B.redMed}`,borderRadius:6,padding:mob?"3px 6px":"4px 10px",fontSize:mob?8:10,fontWeight:700,color:B.red,letterSpacing:"0.5px"}}>{trialDaysLeft}d left in trial</div>}
         {sub?.status==="cancelled"&&<div style={{background:B.danger+"15",border:`1px solid ${B.danger}33`,borderRadius:6,padding:mob?"3px 6px":"4px 10px",fontSize:mob?8:10,fontWeight:700,color:B.danger,letterSpacing:"0.5px"}}>Cancelled</div>}
         {!mob&&view==="planner"&&step>0&&step<3&&<div style={{display:"flex",gap:3}}>{[0,1,2,3].map(s=><div key={s} style={S.stepDot(step===s,step>s)}/>)}</div>}
@@ -1339,7 +1351,7 @@ export default function StrikeScript() {
         {segments.length>0&&<div style={S.card}><span style={S.label}>Your Segments</span>{segments.map((seg,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:B.surface,borderRadius:8,marginBottom:4,borderLeft:`3px solid ${seg.color}`,borderLeftStyle:seg.tracks?"double":"solid"}}><div style={{display:"flex",flexDirection:"column",gap:2}}><button onClick={()=>moveSegment(i,i-1)} style={{background:"none",border:"none",color:B.textDim,cursor:"pointer",fontSize:9,padding:0,lineHeight:1}}>▲</button><button onClick={()=>moveSegment(i,i+1)} style={{background:"none",border:"none",color:B.textDim,cursor:"pointer",fontSize:9,padding:0,lineHeight:1}}>▼</button></div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:B.black}}>{seg.name}</div>{seg.tracks?<div style={{fontSize:10,color:seg.color,marginTop:1,fontWeight:600}}>SPLIT: {seg.tracks.length} groups · {seg.duration}m</div>:seg.drills.length>0&&<div style={{fontSize:10,color:B.textDim,marginTop:1}}>{seg.drills.length} drill{seg.drills.length!==1?"s":""}</div>}</div>{seg.tracks&&<div style={{display:"flex",gap:4,alignItems:"center"}}>{[seg.duration>5&&-5,5].filter(Boolean).map(d=><button key={d} onClick={()=>updateSegDuration(i,seg.duration+d)} style={{background:"none",border:`1px solid ${B.cardBorder}`,borderRadius:4,color:B.textSec,cursor:"pointer",fontSize:10,padding:"2px 6px",fontWeight:600}}>{d>0?"+":""}{d}m</button>)}</div>}<button onClick={()=>removeSegment(i)} style={{background:"none",border:"none",color:B.danger,cursor:"pointer",fontSize:14,padding:"0 4px",opacity:0.5}}>×</button></div>))}</div>}
         {savedSegments.length>0&&<div style={S.card}><span style={S.label}>Saved Segments</span><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{savedSegments.map(ss=>(<div key={ss.id} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",borderRadius:8,background:ss.color+"10",border:`1px solid ${ss.color}30`,cursor:"pointer"}}><span onClick={()=>loadSavedSegment(ss)} style={{color:ss.color,fontSize:11,fontWeight:600}}>{ss.label}<span style={{opacity:0.5,fontSize:9,marginLeft:4}}>({ss.defaultDur}m)</span></span><button onClick={e=>{e.stopPropagation();deleteSavedSegment(ss.id);}} style={{background:"none",border:"none",color:B.danger+"88",cursor:"pointer",fontSize:10,padding:0}}>×</button></div>))}</div></div>}
         <div style={S.card}><span style={S.label}>Full Team</span><div style={{display:"flex",flexWrap:"wrap",gap:mob?8:10}}>{SEGMENT_TEMPLATES.filter(t=>!t.splitType&&t.name!=="Water Break"&&!segments.find(s=>s.name===t.name)).map(t=><button key={t.name} onClick={()=>addSegment(t)} style={S.segChip(t.color,false)}>{t.name}</button>)}</div></div>
-        <div style={S.card}><span style={{...S.label,color:"#8B5CF6"}}>Split Periods</span><div style={{display:"flex",flexWrap:"wrap",gap:mob?8:10}}>{SEGMENT_TEMPLATES.filter(t=>t.splitType).map(t=><button key={t.name} onClick={()=>addSegment(t)} style={S.segChip(t.color,false)}>{t.name}</button>)}</div></div>
+        {SEGMENT_TEMPLATES.some(t=>t.splitType)&&<div style={S.card}><span style={{...S.label,color:"#8B5CF6"}}>Split Periods</span><div style={{display:"flex",flexWrap:"wrap",gap:mob?8:10}}>{SEGMENT_TEMPLATES.filter(t=>t.splitType).map(t=><button key={t.name} onClick={()=>addSegment(t)} style={S.segChip(t.color,false)}>{t.name}</button>)}</div></div>}
         <div style={S.card}><span style={{...S.label,color:"#5BB8F5"}}>Breaks</span><div style={{display:"flex",flexWrap:"wrap",gap:mob?8:10}}>{SEGMENT_TEMPLATES.filter(t=>t.name==="Water Break").map(t=><button key={t.name} onClick={()=>addSegment(t)} style={S.segChip(t.color,false)}>{t.name}</button>)}</div></div>
         <div style={{display:"flex",gap:10,marginTop:16}}><button style={S.btn(false)} onClick={()=>setStep(0)}>Back</button><button style={{...S.btn(true),opacity:segments.length>0?1:0.3}} onClick={()=>{if(segments.length){setActiveSegIdx(0);setStep(2);}}}>Select Drills</button></div>
       </div>
