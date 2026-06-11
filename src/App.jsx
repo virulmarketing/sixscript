@@ -141,6 +141,7 @@ export default function StrikeScript() {
   const [favorites, setFavorites] = useState(new Set());
   const [customDrills, setCustomDrills] = useState([]);
   const [footballType, setFootballType] = useState("tackle");
+  const [drillTypeFilter, setDrillTypeFilter] = useState(null); // null = follow footballType
   const [savedSegments, setSavedSegments] = useState([]);
   const [savedPlans, setSavedPlans] = useState([]);
   const [calendarPlans, setCalendarPlans] = useState({});
@@ -355,7 +356,8 @@ export default function StrikeScript() {
 
   const allDrills = useMemo(() => [...drills, ...customDrills], [drills, customDrills]);
 
-  const toggleFootballType = async (type) => { setFootballType(type); await sv("sk-ft", type); };
+  const toggleFootballType = async (type) => { setFootballType(type); setDrillTypeFilter(null); await sv("sk-ft", type); };
+  const effectiveDrillType = drillTypeFilter || footballType;
   const CATEGORIES = useMemo(() => ALL_CATEGORIES.filter(c => c.footballType === "both" || c.footballType === footballType), [footballType]);
   const SEGMENT_TEMPLATES = useMemo(() => ALL_SEGMENT_TEMPLATES.filter(t => t.footballType === "both" || t.footballType === footballType), [footballType]);
 
@@ -366,7 +368,7 @@ export default function StrikeScript() {
   const activeTrack = activeSeg?.tracks?.[activeTrackIdx] || null;
   const suggestedCats = useMemo(() => { if(!activeSeg) return []; if(activeTrack) return activeTrack.suggestedCats||[]; return SEGMENT_TEMPLATES.find(t=>t.name===activeSeg.name)?.suggestedCats||activeSeg.suggestedCats||[]; }, [activeSeg, activeTrack, SEGMENT_TEMPLATES]);
   const filteredDrills = useMemo(() => {
-    let pool = allDrills.filter(d => { const ft = d.footballType || "both"; return ft === "both" || ft === footballType; });
+    let pool = allDrills.filter(d => { const ft = d.footballType || "both"; if (effectiveDrillType === "both") return ft === "both"; return ft === "both" || ft === effectiveDrillType; });
     if (filterCat==="suggested"&&suggestedCats.length>0) pool=pool.filter(d=>suggestedCats.includes(d.cat));
     else if (filterCat==="favorites") pool=pool.filter(d=>favorites.has(d.id));
     else if (filterCat!=="all"&&filterCat!=="suggested") pool=pool.filter(d=>d.cat===filterCat);
@@ -374,7 +376,7 @@ export default function StrikeScript() {
     if (searchQ.trim()) { const q=searchQ.toLowerCase(); pool=pool.filter(d=>d.name.toLowerCase().includes(q)||d.desc.toLowerCase().includes(q)); }
     pool.sort((a,b)=>(favorites.has(a.id)?0:1)-(favorites.has(b.id)?0:1));
     return pool;
-  }, [filterCat,filterIntensity,searchQ,suggestedCats,allDrills,favorites,footballType]);
+  }, [filterCat,filterIntensity,searchQ,suggestedCats,allDrills,favorites,effectiveDrillType]);
 
   const toggleFavorite = async id => { const n=new Set(favorites); n.has(id)?n.delete(id):n.add(id); setFavorites(n); await sv("sk-fav",[...n]); };
   const createCustomDrill = async () => { if(!newDrill.name.trim()) return; const d={...newDrill,id:"c_"+Date.now(),dur:Math.max(1,newDrill.dur),custom:true}; const n=[...customDrills,d]; setCustomDrills(n); await sv("sk-cd",n); setNewDrill({name:"",cat:"technical",dur:5,intensity:"Medium",desc:"",video:""}); setShowCreateDrill(false); };
@@ -728,6 +730,16 @@ export default function StrikeScript() {
     );
   }
 
+  // ─── Football Type Toggle (reused in Steps 0, 1, 2) ─────────────────────────
+  const FootballTypeToggle = () => (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10,padding:mob?"12px 0 4px":"14px 0 6px"}}>
+      <div style={{display:"flex",background:B.surface,borderRadius:24,padding:3,gap:2,border:`1px solid ${B.cardBorder}`}}>
+        <button onClick={()=>toggleFootballType("tackle")} style={{background:footballType==="tackle"?B.red:"transparent",color:footballType==="tackle"?"#fff":B.textSec,border:"none",borderRadius:20,padding:mob?"6px 14px":"7px 20px",fontSize:mob?11:12,fontWeight:700,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap"}}>🏈 Tackle Football</button>
+        <button onClick={()=>toggleFootballType("flag")} style={{background:footballType==="flag"?"#F59E0B":"transparent",color:footballType==="flag"?"#fff":B.textSec,border:"none",borderRadius:20,padding:mob?"6px 14px":"7px 20px",fontSize:mob?11:12,fontWeight:700,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap"}}>🏴 Flag Football</button>
+      </div>
+    </div>
+  );
+
   // ═══════════ HEADER ═══════════
   const Header = () => (
     <div style={S.header}>
@@ -742,11 +754,6 @@ export default function StrikeScript() {
         </div>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:mob?6:12}}>
-        {/* Tackle / Flag toggle */}
-        <div style={{display:"flex",alignItems:"center",background:"rgba(255,255,255,0.08)",borderRadius:20,padding:2,gap:1}}>
-          <button onClick={()=>toggleFootballType("tackle")} style={{background:footballType==="tackle"?B.red:"transparent",color:footballType==="tackle"?"#fff":"#aaa",border:"none",borderRadius:18,padding:mob?"3px 7px":"3px 10px",fontSize:mob?8:10,fontWeight:700,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap"}}>🏈 {mob?"TK":"Tackle"}</button>
-          <button onClick={()=>toggleFootballType("flag")} style={{background:footballType==="flag"?"#F59E0B":"transparent",color:footballType==="flag"?"#fff":"#aaa",border:"none",borderRadius:18,padding:mob?"3px 7px":"3px 10px",fontSize:mob?8:10,fontWeight:700,cursor:"pointer",transition:"all 0.15s",whiteSpace:"nowrap"}}>🏴 {mob?"FG":"Flag"}</button>
-        </div>
         {sub?.status==="trial"&&trialDaysLeft>0&&<div style={{background:B.redDim,border:`1px solid ${B.redMed}`,borderRadius:6,padding:mob?"3px 6px":"4px 10px",fontSize:mob?8:10,fontWeight:700,color:B.red,letterSpacing:"0.5px"}}>{trialDaysLeft}d left in trial</div>}
         {sub?.status==="cancelled"&&<div style={{background:B.danger+"15",border:`1px solid ${B.danger}33`,borderRadius:6,padding:mob?"3px 6px":"4px 10px",fontSize:mob?8:10,fontWeight:700,color:B.danger,letterSpacing:"0.5px"}}>Cancelled</div>}
         {!mob&&view==="planner"&&step>0&&step<3&&<div style={{display:"flex",gap:3}}>{[0,1,2,3].map(s=><div key={s} style={S.stepDot(step===s,step>s)}/>)}</div>}
@@ -835,6 +842,16 @@ export default function StrikeScript() {
               <button onClick={()=>{setEditName(user?.name||"");setShowEditProfile(true);setAuthError("");}} style={S.btn(false)}>Edit Name</button>
             </div>
           </div>
+        </div>
+
+        <div style={S.card}>
+          <span style={S.label}>Football Mode</span>
+          <div style={{fontSize:13,color:B.textSec,marginBottom:14}}>Set your default mode. This applies across all your practice plans and persists when you log in.</div>
+          <div style={{display:"flex",background:B.surface,borderRadius:24,padding:3,gap:2,border:`1px solid ${B.cardBorder}`,width:"fit-content"}}>
+            <button onClick={()=>toggleFootballType("tackle")} style={{background:footballType==="tackle"?B.red:"transparent",color:footballType==="tackle"?"#fff":B.textSec,border:"none",borderRadius:20,padding:"8px 22px",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all 0.15s"}}>🏈 Tackle Football</button>
+            <button onClick={()=>toggleFootballType("flag")} style={{background:footballType==="flag"?"#F59E0B":"transparent",color:footballType==="flag"?"#fff":B.textSec,border:"none",borderRadius:20,padding:"8px 22px",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all 0.15s"}}>🏴 Flag Football</button>
+          </div>
+          <div style={{fontSize:11,color:B.textDim,marginTop:10}}>{footballType==="flag"?"Flag mode: only flag and universal drills are shown.":"Tackle mode: only tackle and universal drills are shown."}</div>
         </div>
 
         <div style={S.card}>
@@ -1030,6 +1047,7 @@ export default function StrikeScript() {
                 </div>
               ))}
             </div>
+            {myRole==="head"&&<div style={{...S.card,marginTop:12}}><span style={S.label}>Team Football Mode</span><div style={{fontSize:13,color:B.textSec,marginBottom:14}}>Set the default football mode for your team. Updates your active mode immediately.</div><div style={{display:"flex",background:B.surface,borderRadius:24,padding:3,gap:2,border:`1px solid ${B.cardBorder}`,width:"fit-content",marginBottom:8}}><button onClick={()=>toggleFootballType("tackle")} style={{background:footballType==="tackle"?B.red:"transparent",color:footballType==="tackle"?"#fff":B.textSec,border:"none",borderRadius:20,padding:"8px 22px",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all 0.15s"}}>🏈 Tackle Football</button><button onClick={()=>toggleFootballType("flag")} style={{background:footballType==="flag"?"#F59E0B":"transparent",color:footballType==="flag"?"#fff":B.textSec,border:"none",borderRadius:20,padding:"8px 22px",fontSize:13,fontWeight:700,cursor:"pointer",transition:"all 0.15s"}}>🏴 Flag Football</button></div></div>}
             {myRole==="head"&&<div style={{...S.card,marginTop:12}}><span style={S.label}>PDF Colors</span><div style={{fontSize:11,color:B.textSec,marginBottom:12}}>Customise colors used on exported training plan PDFs. Default is red &amp; white.</div><div style={{display:"flex",gap:20,flexWrap:"wrap",alignItems:"flex-end"}}><div><div style={{fontSize:10,fontWeight:700,color:B.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:6}}>Primary Color</div><div style={{display:"flex",alignItems:"center",gap:8}}><input type="color" value={team.primaryColor||"#DC2626"} onChange={e=>updateTeamColors(e.target.value,team.secondaryColor||"#ffffff")} style={{width:40,height:36,border:`1px solid ${B.cardBorder}`,borderRadius:6,cursor:"pointer",padding:2,background:"none"}}/><span style={{fontSize:11,color:B.textSec,fontFamily:"monospace"}}>{team.primaryColor||"#DC2626"}</span></div></div><div><div style={{fontSize:10,fontWeight:700,color:B.textDim,textTransform:"uppercase",letterSpacing:"1px",marginBottom:6}}>Secondary Color</div><div style={{display:"flex",alignItems:"center",gap:8}}><input type="color" value={team.secondaryColor||"#ffffff"} onChange={e=>updateTeamColors(team.primaryColor||"#DC2626",e.target.value)} style={{width:40,height:36,border:`1px solid ${B.cardBorder}`,borderRadius:6,cursor:"pointer",padding:2,background:"none"}}/><span style={{fontSize:11,color:B.textSec,fontFamily:"monospace"}}>{team.secondaryColor||"#ffffff"}</span></div></div><div style={{marginTop:4,padding:"10px 14px",background:B.surface,borderRadius:8,border:`1px solid ${B.cardBorder}`,display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:20,borderRadius:3,background:team.primaryColor||"#DC2626",border:`1px solid ${B.cardBorder}`}}/><div style={{width:32,height:20,borderRadius:3,background:team.secondaryColor||"#ffffff",border:`1px solid ${B.cardBorder}`}}/><span style={{fontSize:10,color:B.textDim}}>Preview</span></div>{(team.primaryColor||team.secondaryColor)&&<button onClick={()=>updateTeamColors(null,null)} style={{...S.btn(false),fontSize:10,color:B.danger,borderColor:B.danger+"44"}}>Reset to Default</button>}</div></div>}
           </>
         )}
@@ -1311,12 +1329,13 @@ export default function StrikeScript() {
   if (step === 0) return (
     <div style={S.app}><Header />
       <div style={{background:B.black,padding:mob?"24px 16px 32px":"48px 32px 56px",textAlign:"center"}}>
-        <div style={{fontSize:mob?9:11,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginBottom:mob?10:16}}>Training Planner</div>
-        <div style={{fontSize:mob?24:40,fontWeight:800,color:B.white,letterSpacing:"-1.5px",lineHeight:1.1}}>When does training start?</div>
+        <div style={{fontSize:mob?9:11,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"3px",marginBottom:mob?10:16}}>Practice Planner</div>
+        <div style={{fontSize:mob?24:40,fontWeight:800,color:B.white,letterSpacing:"-1.5px",lineHeight:1.1}}>When does practice start?</div>
         {practiceDate&&<div style={{fontSize:13,color:B.red,marginTop:10,opacity:0.8}}>📅 Planning for {practiceDate}</div>}
       </div>
       <div style={S.body}>
-        <div style={{...S.card,maxWidth:580,margin:mob?"-16px auto 0":"-32px auto 0",padding:mob?20:40,borderRadius:16,position:"relative",zIndex:1}}>
+        <FootballTypeToggle/>
+        <div style={{...S.card,maxWidth:580,margin:mob?"4px auto 0":"8px auto 0",padding:mob?20:40,borderRadius:16,position:"relative",zIndex:1}}>
           <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:mob?12:24,flexDirection:mob?"column":"row"}}>
             {[["Start",startH,setStartH,startHStr,setStartHStr,startM,setStartM,startMStr,setStartMStr,startAP,setStartAP],["End",endH,setEndH,endHStr,setEndHStr,endM,setEndM,endMStr,setEndMStr,endAP,setEndAP]].map(([lbl,h,sH,hStr,sHStr,m,sM,mStr,sMStr,ap,sAP],idx)=>(
               <React.Fragment key={lbl}>{idx===1&&!mob&&<div style={{width:32,height:2,background:B.red,marginTop:12,borderRadius:1}}/>}
@@ -1332,11 +1351,11 @@ export default function StrikeScript() {
           </div>
           <div style={{textAlign:"center",marginTop:mob?20:36,paddingTop:mob?16:28,borderTop:`1px solid ${B.cardBorder}`}}>
             <div style={{fontSize:mob?48:64,fontWeight:800,color:B.black,lineHeight:1,letterSpacing:"-3px"}}>{totalMin>0?totalMin:0}</div>
-            <div style={{fontSize:9,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"2px",marginTop:8}}>Minutes of Training</div>
+            <div style={{fontSize:9,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"2px",marginTop:8}}>Minutes of Practice</div>
           </div>
         </div>
         {savedPlans.length>0&&<div style={{...S.card,maxWidth:580,margin:"0 auto"}}><span style={S.label}>Load Saved Plan</span><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{savedPlans.map(p=><button key={p.id} onClick={()=>loadPracticePlan(p)} style={S.segChip(B.red,false)}>{p.label}<span style={{opacity:0.4,fontSize:9,marginLeft:3}}>{p.segments.length} seg</span></button>)}</div></div>}
-        <div style={{textAlign:"center",marginTop:20}}><button style={{...S.btn(true),opacity:totalMin>0?1:0.3,padding:"14px 40px",fontSize:13,borderRadius:10}} onClick={()=>totalMin>0&&setStep(1)}>Start Training Plan</button></div>
+        <div style={{textAlign:"center",marginTop:20}}><button style={{...S.btn(true),opacity:totalMin>0?1:0.3,padding:"14px 40px",fontSize:13,borderRadius:10}} onClick={()=>totalMin>0&&setStep(1)}>Start Practice Plan</button></div>
       </div>
       <Footer/>
     </div>
@@ -1347,7 +1366,8 @@ export default function StrikeScript() {
     <div style={S.app}><Header/>
       <div style={{background:B.black,padding:mob?"16px 12px 24px":"24px 32px 40px"}}><div style={{maxWidth:1120,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-end",flexWrap:"wrap",gap:12}}><div><div style={{fontSize:mob?9:10,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"2px",marginBottom:6}}>Step 2</div><div style={{fontSize:mob?20:26,fontWeight:800,color:B.white,letterSpacing:"-1px"}}>Session Structure</div></div><div style={{display:"flex",gap:mob?12:20}}><div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><div style={{fontSize:mob?18:24,fontWeight:800,color:remainMin<0?B.danger:"#4ADE80",lineHeight:1}}>{remainMin}</div><div style={{fontSize:9,color:B.red,fontWeight:700,textTransform:"uppercase",letterSpacing:"1.5px"}}>Left</div></div><div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2}}><div style={{fontSize:mob?18:24,fontWeight:800,color:B.white,lineHeight:1}}>{usedMin}</div><div style={{fontSize:9,color:B.red,fontWeight:700,textTransform:"uppercase",letterSpacing:"1.5px"}}>Used</div></div></div></div></div>
       <div style={S.body}>
-        <div style={{height:8,background:B.surface,borderRadius:4,marginBottom:28,overflow:"hidden",display:"flex",marginTop:-8}}>{segments.map((seg,i)=><div key={i} style={{flex:1,background:seg.color}}/>)}</div>
+        <FootballTypeToggle/>
+        <div style={{height:8,background:B.surface,borderRadius:4,marginBottom:28,overflow:"hidden",display:"flex",marginTop:4}}>{segments.map((seg,i)=><div key={i} style={{flex:1,background:seg.color}}/>)}</div>
         {segments.length>0&&<div style={S.card}><span style={S.label}>Your Segments</span>{segments.map((seg,i)=>(<div key={i} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 14px",background:B.surface,borderRadius:8,marginBottom:4,borderLeft:`3px solid ${seg.color}`,borderLeftStyle:seg.tracks?"double":"solid"}}><div style={{display:"flex",flexDirection:"column",gap:2}}><button onClick={()=>moveSegment(i,i-1)} style={{background:"none",border:"none",color:B.textDim,cursor:"pointer",fontSize:9,padding:0,lineHeight:1}}>▲</button><button onClick={()=>moveSegment(i,i+1)} style={{background:"none",border:"none",color:B.textDim,cursor:"pointer",fontSize:9,padding:0,lineHeight:1}}>▼</button></div><div style={{flex:1}}><div style={{fontWeight:700,fontSize:13,color:B.black}}>{seg.name}</div>{seg.tracks?<div style={{fontSize:10,color:seg.color,marginTop:1,fontWeight:600}}>SPLIT: {seg.tracks.length} groups · {seg.duration}m</div>:seg.drills.length>0&&<div style={{fontSize:10,color:B.textDim,marginTop:1}}>{seg.drills.length} drill{seg.drills.length!==1?"s":""}</div>}</div>{seg.tracks&&<div style={{display:"flex",gap:4,alignItems:"center"}}>{[seg.duration>5&&-5,5].filter(Boolean).map(d=><button key={d} onClick={()=>updateSegDuration(i,seg.duration+d)} style={{background:"none",border:`1px solid ${B.cardBorder}`,borderRadius:4,color:B.textSec,cursor:"pointer",fontSize:10,padding:"2px 6px",fontWeight:600}}>{d>0?"+":""}{d}m</button>)}</div>}<button onClick={()=>removeSegment(i)} style={{background:"none",border:"none",color:B.danger,cursor:"pointer",fontSize:14,padding:"0 4px",opacity:0.5}}>×</button></div>))}</div>}
         {savedSegments.length>0&&<div style={S.card}><span style={S.label}>Saved Segments</span><div style={{display:"flex",flexWrap:"wrap",gap:6}}>{savedSegments.map(ss=>(<div key={ss.id} style={{display:"inline-flex",alignItems:"center",gap:6,padding:"7px 12px",borderRadius:8,background:ss.color+"10",border:`1px solid ${ss.color}30`,cursor:"pointer"}}><span onClick={()=>loadSavedSegment(ss)} style={{color:ss.color,fontSize:11,fontWeight:600}}>{ss.label}<span style={{opacity:0.5,fontSize:9,marginLeft:4}}>({ss.defaultDur}m)</span></span><button onClick={e=>{e.stopPropagation();deleteSavedSegment(ss.id);}} style={{background:"none",border:"none",color:B.danger+"88",cursor:"pointer",fontSize:10,padding:0}}>×</button></div>))}</div></div>}
         <div style={S.card}><span style={S.label}>Full Team</span><div style={{display:"flex",flexWrap:"wrap",gap:mob?8:10}}>{SEGMENT_TEMPLATES.filter(t=>!t.splitType&&t.name!=="Water Break"&&!segments.find(s=>s.name===t.name)).map(t=><button key={t.name} onClick={()=>addSegment(t)} style={S.segChip(t.color,false)}>{t.name}</button>)}</div></div>
@@ -1372,6 +1392,7 @@ export default function StrikeScript() {
     return (
       <><div style={S.app}><Header/>
         <div style={S.body}>
+          <FootballTypeToggle/>
           <div style={{display:"flex",gap:mob?8:10,marginBottom:activeSeg?.tracks?8:24,overflowX:"auto",paddingBottom:6}}>{segments.map((seg,i)=><button key={i} ref={el=>segBtnRefs.current[i]=el} onClick={()=>{setActiveSegIdx(i);setActiveTrackIdx(0);setSearchQ("");setFilterCat("suggested");}} style={{...S.segChip(seg.color,i===activeSegIdx),whiteSpace:"nowrap",flexShrink:0}}>{seg.name}{seg.tracks?<span style={{fontSize:mob?9:10,opacity:0.6,marginLeft:4}}>⟂</span>:seg.drills.length>0&&<span style={{fontSize:mob?10:12,opacity:0.5,marginLeft:4}}>({seg.drills.length})</span>}</button>)}</div>
           {activeSeg?.tracks&&<div style={{display:"flex",gap:6,marginBottom:20,overflowX:"auto",paddingBottom:4}}>{activeSeg.tracks.map((t,ti)=><button key={t.id} onClick={()=>{setActiveTrackIdx(ti);setSearchQ("");setFilterCat("suggested");}} style={{...S.segChip(t.color,ti===activeTrackIdx),whiteSpace:"nowrap",flexShrink:0,fontSize:mob?10:11,padding:mob?"6px 10px":"7px 14px"}}>{t.label}{t.drills.length>0&&<span style={{fontSize:9,opacity:0.5,marginLeft:4}}>({t.drills.length})</span>}</button>)}</div>}
           <div style={{display:mob?"flex":"grid",flexDirection:"column",gridTemplateColumns:mob?undefined:"1fr 380px",gap:mob?12:20}}>
@@ -1380,6 +1401,12 @@ export default function StrikeScript() {
                 <div style={{display:"flex",gap:6}}>
                   <input style={{...S.input,flex:1,minWidth:0}} placeholder="Search drills..." value={searchQ} onChange={e=>setSearchQ(e.target.value)}/>
                   <select style={{...S.input,width:"auto",cursor:"pointer",flexShrink:0}} value={filterCat} onChange={e=>setFilterCat(e.target.value)}><option value="suggested">Suggested</option><option value="favorites">Favourites</option><option value="all">All</option>{CATEGORIES.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  <span style={{fontSize:9,fontWeight:700,color:B.textDim,textTransform:"uppercase",letterSpacing:"1px"}}>Show drills for:</span>
+                  {[["flag","🏴 Flag","#F59E0B"],["both","⚫ Universal",B.textDim],["tackle","🏈 Tackle",B.red]].map(([type,label,color])=>(
+                    <button key={type} onClick={()=>setDrillTypeFilter(drillTypeFilter===type?null:type)} style={{background:effectiveDrillType===type?color+"18":"transparent",color:effectiveDrillType===type?color:B.textSec,border:`1px solid ${effectiveDrillType===type?color+"44":B.cardBorder}`,borderRadius:16,padding:"3px 10px",fontSize:9,fontWeight:700,cursor:"pointer",transition:"all 0.15s"}}>{label}</button>
+                  ))}
                 </div>
                 <div style={{display:"flex",gap:6,flexWrap:"nowrap"}}>
                   {hasP(myRole,"create")&&<button onClick={()=>setShowCreateDrill(true)} style={{...S.btn(false),color:B.red,borderColor:B.redMed}}>New Drill</button>}
