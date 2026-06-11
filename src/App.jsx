@@ -1425,7 +1425,7 @@ export default function StrikeScript() {
         <div style={S.card}><span style={S.label}>Full Team</span><div style={{display:"flex",flexWrap:"wrap",gap:mob?8:10}}>{SEGMENT_TEMPLATES.filter(t=>!t.splitType&&t.name!=="Water Break"&&!segments.find(s=>s.name===t.name)).map(t=><button key={t.name} onClick={()=>addSegment(t)} style={S.segChip(t.color,false)}>{t.name}</button>)}</div></div>
         {SEGMENT_TEMPLATES.some(t=>t.splitType)&&<div style={S.card}><span style={{...S.label,color:"#8B5CF6"}}>Split Periods</span><div style={{display:"flex",flexWrap:"wrap",gap:mob?8:10}}>{SEGMENT_TEMPLATES.filter(t=>t.splitType).map(t=><button key={t.name} onClick={()=>addSegment(t)} style={S.segChip(t.color,false)}>{t.name}</button>)}</div></div>}
         <div style={S.card}><span style={{...S.label,color:"#5BB8F5"}}>Breaks</span><div style={{display:"flex",flexWrap:"wrap",gap:mob?8:10}}>{SEGMENT_TEMPLATES.filter(t=>t.name==="Water Break").map(t=><button key={t.name} onClick={()=>addSegment(t)} style={S.segChip(t.color,false)}>{t.name}</button>)}</div></div>
-        <div style={{display:"flex",gap:10,marginTop:16}}><button style={S.btn(false)} onClick={()=>setStep(0)}>Back</button><button style={{...S.btn(true),opacity:segments.length>0?1:0.3}} onClick={()=>{if(segments.length){setActiveSegIdx(0);setStep(2);}}}>Select Drills</button></div>
+        <div style={{display:"flex",gap:10,marginTop:16}}><button style={S.btn(false)} onClick={()=>setStep(0)}>Back</button><button style={{...S.btn(true),opacity:segments.length>0?1:0.3}} onClick={()=>{if(segments.length){setActiveSegIdx(0);setActiveTrackIdx(0);setFilterCat("suggested");setSearchQ("");setStep(2);}}}>Select Drills</button></div>
       </div>
       <Footer/>
     </div>
