@@ -71,8 +71,8 @@ const config = {
     { name: "Team Building",         defaultDur:  5, suggestedCats: ["teambuilding"],              color: "#778899", footballType: "both" },
     { name: "Water Break",           defaultDur:  5, suggestedCats: ["breaks"],                    color: "#5BB8F5", footballType: "both" },
     { name: "Cool Down / Stretch",   defaultDur:  8, suggestedCats: ["teambuilding", "warmup"],    color: "#778899", footballType: "both" },
-    { name: "Unit Split",            defaultDur: 20, suggestedCats: [],                            color: "#8B5CF6", footballType: "tackle", splitType: "unit" },
-    { name: "Position Groups",       defaultDur: 30, suggestedCats: [],                            color: "#E8A317", footballType: "tackle", splitType: "position" },
+    { name: "Unit Split",            defaultDur: 20, suggestedCats: [],                            color: "#8B5CF6", footballType: "both",   splitType: "unit" },
+    { name: "Position Groups",       defaultDur: 30, suggestedCats: [],                            color: "#E8A317", footballType: "both",   splitType: "position" },
   ],
 
   // ── Unit & Position Groups (football-specific) ────────────────────────────
@@ -90,6 +90,16 @@ const config = {
     { id: "rb",  label: "Running Backs",  color: "#1D3557", suggestedCats: ["rushing","individual"] },
     { id: "qb",  label: "Quarterbacks",   color: "#E63946", suggestedCats: ["passing","individual"] },
     { id: "st",  label: "Special Teams",  color: "#DDA0DD", suggestedCats: ["special_teams"] },
+  ],
+
+  flagPositionGroups: [
+    { id: "fqb", label: "Quarterbacks",   color: "#E63946", suggestedCats: ["passing","individual"] },
+    { id: "frb", label: "Running Backs",  color: "#1D3557", suggestedCats: ["rushing","individual"] },
+    { id: "fwr", label: "Wide Receivers", color: "#7B68EE", suggestedCats: ["receiving","passing","individual"] },
+    { id: "flb", label: "Linebackers",    color: "#E8A317", suggestedCats: ["flag_rush","secondary","individual"] },
+    { id: "fru", label: "Rushers",        color: "#10B981", suggestedCats: ["flag_rush","individual"] },
+    { id: "fdb", label: "DBs",            color: "#4A90D9", suggestedCats: ["secondary","individual"] },
+    { id: "fc",  label: "Centers",        color: "#F59E0B", suggestedCats: ["rushing","individual"] },
   ],
 
   // ── Copy ──────────────────────────────────────────────────────────────────
