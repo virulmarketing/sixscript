@@ -190,7 +190,16 @@ const config = {
 
     onboardingWelcomeHeadline: "Welcome to SixScript",
     onboardingWelcomeSubtext:  "Let's walk you through everything SixScript can do for your coaching staff. This takes 2 minutes.",
-    onboardingStepLabels: ["1. Build Your Staff", "2. Create Scripts", "3. Personalise", "4. Use the Calendar"],
+    onboardingStepLabels: ["0. Choose Mode", "1. Build Your Staff", "2. Create Scripts", "3. Personalise", "4. Use the Calendar"],
+
+    onboardingModeTitle: "Tackle or Flag — Your Choice",
+    onboardingModePoints: [
+      ["🏈", "Full Tackle Library",    "900+ drills across O-line, D-line, linebackers, special teams, 7-on-7, rushing, passing, and red zone — plus tackle-specific period templates like Individual, 11-on-11, and Team Period."],
+      ["🏴", "Full Flag Library",      "800+ drills including flag pulling mechanics, rush defense, no-contact rushing, stack routes, 5-on-5 concepts, and zone coverage adaptations — plus flag-specific period templates."],
+      ["⚫", "600+ Universal Drills",  "Warmup, conditioning, route running, receiving, coverage, and red zone drills appear in both modes. Nothing is lost when you switch."],
+      ["🔄", "Switch Anytime",         "Toggle your mode on Step 1, Step 2, or Step 3 of the practice builder. The drill filter on Step 3 lets you browse all drill types regardless of your current mode."],
+      ["⚙️", "Set Your Default",       "Save your mode preference in Account Settings or Team Settings. It persists across sessions so you never have to select it again."],
+    ],
 
     onboardingTeamTitle: "Set Up Your Coaching Staff",
     onboardingTeamBody:  "SixScript is built for full coaching staffs. Creating a team unlocks collaboration — your coordinators and position coaches get full access under your plan, you can assign drills to specific coaches, and everyone sees the same practice script before stepping on the field.",

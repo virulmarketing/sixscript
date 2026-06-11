@@ -1091,6 +1091,58 @@ export default function StrikeScript() {
 
       <div style={{maxWidth:900,margin:"0 auto",padding:mob?"24px 16px 60px":"48px 32px 80px"}}>
 
+        {/* SECTION 0: FOOTBALL MODE */}
+        <div style={{marginBottom:mob?56:80}}>
+          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:24}}>
+            <div style={{width:44,height:44,borderRadius:12,background:"#F59E0B",display:"flex",alignItems:"center",justifyContent:"center",fontSize:20,fontWeight:800,color:"#fff",flexShrink:0}}>0</div>
+            <div>
+              <div style={{fontSize:10,fontWeight:700,color:"#F59E0B",textTransform:"uppercase",letterSpacing:"2px",marginBottom:3}}>Built for Both</div>
+              <div style={{fontSize:mob?22:30,fontWeight:800,color:B.black,letterSpacing:"-0.5px",lineHeight:1.1}}>{config.copy.onboardingModeTitle}</div>
+            </div>
+          </div>
+          <div style={{display:mob?"flex":"grid",flexDirection:mob?"column":undefined,gridTemplateColumns:"1fr 1fr",gap:28,alignItems:"start"}}>
+            <div>
+              {config.copy.onboardingModePoints.map(([ic,ti,de],i)=>(
+                <div key={i} style={{display:"flex",gap:12,marginBottom:14}}>
+                  <div style={{fontSize:20,flexShrink:0,lineHeight:1.2}}>{ic}</div>
+                  <div><div style={{fontWeight:700,fontSize:13,color:B.black,marginBottom:2}}>{ti}</div><div style={{fontSize:12,color:B.textSec,lineHeight:1.5}}>{de}</div></div>
+                </div>
+              ))}
+            </div>
+            <div style={{background:B.white,border:`1px solid ${B.cardBorder}`,borderRadius:14,padding:20,boxShadow:"0 4px 24px rgba(0,0,0,0.07)"}}>
+              <div style={{fontSize:9,fontWeight:700,color:B.textDim,textTransform:"uppercase",letterSpacing:"2px",marginBottom:12}}>Football Mode</div>
+              <div style={{display:"flex",background:B.surface,borderRadius:24,padding:3,gap:2,border:`1px solid ${B.cardBorder}`,marginBottom:18,width:"fit-content"}}>
+                <div style={{background:B.red,color:"#fff",borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700}}>🏈 Tackle Football</div>
+                <div style={{background:"transparent",color:B.textSec,borderRadius:20,padding:"6px 16px",fontSize:11,fontWeight:700}}>🏴 Flag Football</div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+                <div>
+                  <div style={{fontSize:9,fontWeight:700,color:B.red,textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}}>🏈 Tackle Periods</div>
+                  {[["O-Line Install","15m","#DC2626"],["D-Line Reps","12m","#DC2626"],["7-on-7","15m","#457B9D"],["Red Zone","15m","#E8A317"],["Special Teams","10m","#2D7A4F"]].map(([n,d,c],i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 8px",background:c+"10",borderLeft:`2px solid ${c}`,borderRadius:"0 5px 5px 0",marginBottom:3}}>
+                      <div style={{fontSize:10,fontWeight:700,color:B.black}}>{n}</div>
+                      <div style={{fontSize:9,color:B.textDim,fontWeight:600}}>{d}</div>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div style={{fontSize:9,fontWeight:700,color:"#F59E0B",textTransform:"uppercase",letterSpacing:"1.5px",marginBottom:8}}>🏴 Flag Periods</div>
+                  {[["Flag Pulling","12m","#F59E0B"],["Rush Defense","10m","#10B981"],["Route Running","15m","#457B9D"],["5-on-5 Scrimmage","20m","#7B68EE"],["Conditioning","8m","#2D7A4F"]].map(([n,d,c],i)=>(
+                    <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"5px 8px",background:c+"10",borderLeft:`2px solid ${c}`,borderRadius:"0 5px 5px 0",marginBottom:3}}>
+                      <div style={{fontSize:10,fontWeight:700,color:B.black}}>{n}</div>
+                      <div style={{fontSize:9,color:B.textDim,fontWeight:600}}>{d}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div style={{marginTop:12,padding:"7px 10px",background:B.surface,border:`1px solid ${B.cardBorder}`,borderRadius:7,display:"flex",alignItems:"center",gap:7}}>
+                <span style={{fontSize:14}}>⚫</span>
+                <div style={{fontSize:10,color:B.textSec,lineHeight:1.4}}><span style={{fontWeight:700,color:B.black}}>600+ Universal Drills</span> — appear in both modes automatically</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* SECTION 1: TEAM */}
         <div style={{marginBottom:mob?56:80}}>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:24}}>
