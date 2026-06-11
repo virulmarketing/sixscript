@@ -374,7 +374,15 @@ export default function StrikeScript() {
     else if (filterCat!=="all"&&filterCat!=="suggested") pool=pool.filter(d=>d.cat===filterCat);
     if (filterIntensity!=="all") pool=pool.filter(d=>d.intensity===filterIntensity);
     if (searchQ.trim()) { const q=searchQ.toLowerCase(); pool=pool.filter(d=>d.name.toLowerCase().includes(q)||d.desc.toLowerCase().includes(q)); }
-    pool.sort((a,b)=>(favorites.has(a.id)?0:1)-(favorites.has(b.id)?0:1));
+    pool.sort((a,b)=>{
+      const aFav=favorites.has(a.id)?0:1; const bFav=favorites.has(b.id)?0:1;
+      if(aFav!==bFav) return aFav-bFav;
+      if(filterCat==="suggested"&&suggestedCats.length>1){
+        const ai=suggestedCats.indexOf(a.cat); const bi=suggestedCats.indexOf(b.cat);
+        return (ai===-1?suggestedCats.length:ai)-(bi===-1?suggestedCats.length:bi);
+      }
+      return 0;
+    });
     return pool;
   }, [filterCat,filterIntensity,searchQ,suggestedCats,allDrills,favorites,effectiveDrillType]);
 
