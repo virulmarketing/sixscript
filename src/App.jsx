@@ -258,7 +258,7 @@ export default function StrikeScript() {
   };
 
   const doCancel = async () => {
-    setSubLoading(true);
+    setSubLoading(true); setAuthError("");
     try {
       const token = await getToken();
       const res = await fetch(STRIPE.API_URL + "/cancel-subscription", {
@@ -267,15 +267,22 @@ export default function StrikeScript() {
         body: JSON.stringify({ stripeSubId: sub?.stripeSubId }),
       });
       const data = await res.json();
-      const cancelAt = data.currentPeriodEnd ? new Date(data.currentPeriodEnd * 1000).toISOString() : null;
+      if (!res.ok) {
+        // Keep the user where they are — do NOT flip status, which would gate them to the paywall.
+        setAuthError(data.error || "Couldn't cancel your subscription. Please try again or contact support.");
+        setSubLoading(false);
+        return;
+      }
+      const ts = data.currentPeriodEnd || data.cancelAt;
+      const cancelAt = ts ? new Date(ts * 1000).toISOString() : null;
       const newSub = { ...sub, status: "cancelled", cancelAt };
       await sv("sk-sub-"+user.id, newSub); setSub(newSub);
+      setShowCancelConfirm(false);
     } catch (e) {
       console.warn("Cancel failed:", e);
-      const newSub = { ...sub, status: "cancelled", cancelAt: null };
-      await sv("sk-sub-"+user.id, newSub); setSub(newSub);
+      setAuthError("Something went wrong cancelling your subscription. Please try again.");
     }
-    setShowCancelConfirm(false); setSubLoading(false);
+    setSubLoading(false);
   };
 
   const doResubscribe = async () => { await doSubscribe(); };
@@ -895,7 +902,7 @@ export default function StrikeScript() {
             </div>
             <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
               {sub?.status==="trial"&&<button onClick={doSubscribe} style={S.btn(true)}>Upgrade Now</button>}
-              {myRole==="head"&&(sub?.status==="active"||sub?.status==="trialing")&&<button onClick={()=>setShowCancelConfirm(true)} style={{...S.btn(false),color:B.danger,borderColor:B.danger+"44"}}>Cancel Subscription</button>}
+              {myRole==="head"&&(sub?.status==="active"||sub?.status==="trialing")&&<button onClick={()=>{setAuthError("");setShowCancelConfirm(true);}} style={{...S.btn(false),color:B.danger,borderColor:B.danger+"44"}}>Cancel Subscription</button>}
               {sub?.status==="cancelled"&&<button onClick={doResubscribe} style={S.btn(true)}>Resubscribe</button>}
             </div>
           </div>
@@ -984,14 +991,15 @@ export default function StrikeScript() {
         </div>
       </div></div>)}
 
-      {showCancelConfirm&&(<div style={S.overlay} onClick={()=>setShowCancelConfirm(false)}><div style={S.modal} onClick={e=>e.stopPropagation()}>
+      {showCancelConfirm&&(<div style={S.overlay} onClick={()=>{setShowCancelConfirm(false);setAuthError("");}}><div style={S.modal} onClick={e=>e.stopPropagation()}>
         <div style={{fontSize:9,fontWeight:700,color:B.danger,textTransform:"uppercase",letterSpacing:"2px",marginBottom:4}}>Cancel</div>
         <div style={{fontSize:22,fontWeight:800,color:B.black,marginBottom:12}}>Cancel Subscription?</div>
         <div style={{fontSize:13,color:B.textSec,marginBottom:8}}>Your access will continue until the end of your current billing period. After that, you'll lose access to all premium features.</div>
         <div style={{background:B.surface,borderRadius:8,padding:14,marginBottom:20}}>
           {config.copy.cancelFeatures.map((f,i)=><div key={i} style={{fontSize:12,color:B.textSec,padding:"3px 0"}}>· {f}</div>)}
         </div>
-        <div style={{display:"flex",gap:10}}><button style={{...S.btn(false),color:B.danger,borderColor:B.danger+"44",flex:1}} onClick={doCancel}>Yes, Cancel</button><button style={{...S.btn(true),flex:1}} onClick={()=>setShowCancelConfirm(false)}>Keep My Plan</button></div>
+        {authError&&<div style={{...S.badge(B.danger),marginBottom:14,padding:"8px 12px",fontSize:11}}>{authError}</div>}
+        <div style={{display:"flex",gap:10}}><button disabled={subLoading} style={{...S.btn(false),color:B.danger,borderColor:B.danger+"44",flex:1,opacity:subLoading?0.6:1}} onClick={doCancel}>{subLoading?"Cancelling...":"Yes, Cancel"}</button><button style={{...S.btn(true),flex:1}} onClick={()=>{setShowCancelConfirm(false);setAuthError("");}}>Keep My Plan</button></div>
       </div></div>)}
 
     </div><Footer/></>
